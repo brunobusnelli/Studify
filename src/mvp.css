@@ -41,6 +41,48 @@
   padding-top: 12px;
 }
 
+.file-upload-box {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 10px;
+  min-height: 76px;
+  padding: 14px;
+  border: 1px dashed rgba(91, 87, 232, 0.38);
+  border-radius: 8px;
+  background: #fbfbff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.file-upload-box svg {
+  grid-row: span 2;
+  color: var(--primary);
+}
+
+.file-upload-box span {
+  font-weight: 800;
+}
+
+.file-upload-box small {
+  color: var(--muted);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.file-input {
+  padding: 10px !important;
+}
+
+.upload-status {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f0efff;
+  color: var(--primary);
+  font-weight: 800;
+}
+
 .quick-form input:focus,
 .quick-form select:focus,
 .quick-form textarea:focus {
@@ -50,6 +92,16 @@
 
 .editable-row {
   grid-template-columns: 44px minmax(0, 1fr) auto;
+}
+
+.document-row em {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .row-actions {
