@@ -7,6 +7,7 @@ Studify es una aplicacion para estudiantes enfocada en organizar el tiempo de es
 El proyecto esta armado como una app React con Vite. Esta version ya funciona como un MVP local:
 
 - Dashboard con resumen semanal, racha, sesiones y apuntes guardados.
+- Plan de Hoy calculado desde el examen mas urgente, temas pendientes y horas restantes.
 - Materias editables desde el perfil.
 - Apuntes creados, editados, borrados y filtrados por materia.
 - Pomodoro interactivo con registro de sesiones de estudio.
