@@ -25,6 +25,23 @@ function profileFromSupabaseUser(user) {
   };
 }
 
+function friendlyAuthError(message) {
+  const normalized = String(message || '').toLowerCase();
+  if (normalized.includes('email rate limit')) {
+    return 'Supabase limito los emails de registro por unos minutos. Proba iniciar sesion si la cuenta ya se creo, o espera un rato antes de registrarte de nuevo.';
+  }
+  if (normalized.includes('invalid login credentials')) {
+    return 'Email o contrasena incorrectos.';
+  }
+  if (normalized.includes('already registered') || normalized.includes('already exists')) {
+    return 'Ese email ya esta registrado. Proba iniciar sesion.';
+  }
+  if (normalized.includes('password')) {
+    return 'La contrasena no cumple los requisitos de Supabase.';
+  }
+  return message || 'No se pudo completar la accion.';
+}
+
 export default function AuthShell({ children }) {
   const [mode, setMode] = useState('login');
   const [user, setUser] = useState(readUser);
@@ -74,7 +91,7 @@ export default function AuthShell({ children }) {
     setLoading(false);
 
     if (response.error) {
-      setMessage(response.error.message);
+      setMessage(friendlyAuthError(response.error.message));
       return;
     }
 
