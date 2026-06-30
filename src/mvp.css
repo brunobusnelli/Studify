@@ -81,6 +81,85 @@
   background: #fff2f2;
 }
 
+.plan-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.plan-panel.compact {
+  gap: 12px;
+}
+
+.plan-hero {
+  min-height: 132px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #4f7af0, var(--primary));
+  box-shadow: 0 14px 28px rgba(91, 87, 232, 0.2);
+}
+
+.plan-hero span {
+  display: block;
+  opacity: 0.82;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-hero strong {
+  display: block;
+  margin: 8px 0;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.plan-hero p {
+  color: rgba(255,255,255,.84);
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.plan-grid div {
+  min-height: 74px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbfe;
+}
+
+.plan-grid small {
+  font-weight: 700;
+}
+
+.plan-grid strong {
+  font-size: 20px;
+}
+
+.explain-list {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.explain-list p {
+  padding: 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #fbfbfe;
+  border: 1px solid var(--line);
+}
+
 .focus-panel {
   display: grid;
   gap: 12px;
@@ -232,6 +311,19 @@
   .row-actions button {
     width: 30px;
     height: 30px;
+  }
+
+  .plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .plan-hero strong {
+    font-size: 24px;
   }
 
   .exam-card {
