@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
   Clock3, FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, Menu, Moon,
@@ -108,18 +108,18 @@ function useStudyData() {
     window.localStorage.setItem('studify-data', JSON.stringify(data));
   }, [data]);
 
-  const addNote = (note) => setData(current => ({ ...current, notes: [{ id: uid('note'), date: todayISO(), size: 'Manual', type: 'PDF', ...note }, ...current.notes] }));
-  const addSubject = (subject) => setData(current => ({ ...current, subjects: [{ id: uid('subject'), color: 'purple', targetHours: 5, ...subject }, ...current.subjects] }));
-  const addExam = (exam) => setData(current => ({ ...current, exams: [{ id: uid('exam'), completedTopics: [], ...exam }, ...current.exams] }));
-  const addSession = (session) => setData(current => ({ ...current, sessions: [{ id: uid('session'), date: todayISO(), ...session }, ...current.sessions] }));
-  const toggleTopic = (examId, topic) => setData(current => ({
+  const addNote = useCallback((note) => setData(current => ({ ...current, notes: [{ id: uid('note'), date: todayISO(), size: 'Manual', type: 'PDF', ...note }, ...current.notes] })), []);
+  const addSubject = useCallback((subject) => setData(current => ({ ...current, subjects: [{ id: uid('subject'), color: 'purple', targetHours: 5, ...subject }, ...current.subjects] })), []);
+  const addExam = useCallback((exam) => setData(current => ({ ...current, exams: [{ id: uid('exam'), completedTopics: [], ...exam }, ...current.exams] })), []);
+  const addSession = useCallback((session) => setData(current => ({ ...current, sessions: [{ id: uid('session'), date: todayISO(), ...session }, ...current.sessions] })), []);
+  const toggleTopic = useCallback((examId, topic) => setData(current => ({
     ...current,
     exams: current.exams.map(exam => {
       if (exam.id !== examId) return exam;
       const exists = exam.completedTopics.includes(topic);
       return { ...exam, completedTopics: exists ? exam.completedTopics.filter(item => item !== topic) : [...exam.completedTopics, topic] };
     })
-  }));
+  })), []);
 
   return { data, addNote, addSubject, addExam, addSession, toggleTopic };
 }
@@ -163,8 +163,7 @@ function BarChart({ bars, tall = false }) {
 function TimerRing({ seconds, large }) {
   const progress = Math.max(8, 100 - Math.round((seconds / 1500) * 100));
   return <div className={`timer-ring ${large ? 'large' : ''}`} style={{ '--progress': progress }}><span>{formatTime(seconds)}</span><small>Tiempo de estudio</small></div>;
-}
-
+}\n
 function QuickForm({ title, children, onSubmit }) {
   return <form className="quick-form" onSubmit={onSubmit}><h3>{title}</h3>{children}<button className="primary-button" type="submit"><Plus size={17} />Guardar</button></form>;
 }
