@@ -13,8 +13,20 @@ export function inferFileType(file) {
   return 'FILE';
 }
 
+export function validateStudyFile(file) {
+  const fileType = inferFileType(file);
+  const maxBytes = 20 * 1024 * 1024;
+  if (!['PDF', 'DOC'].includes(fileType)) {
+    throw new Error('Solo se pueden subir archivos PDF, DOC o DOCX.');
+  }
+  if (file.size > maxBytes) {
+    throw new Error('El archivo supera el maximo de 20 MB.');
+  }
+}
+
 export async function uploadStudyFile(file) {
   if (!file) return null;
+  validateStudyFile(file);
 
   const metadata = {
     fileName: file.name,
@@ -43,4 +55,11 @@ export async function uploadStudyFile(file) {
     filePath: path,
     storage: 'supabase'
   };
+}
+
+export async function getStudyFileUrl(filePath) {
+  if (!filePath || !isSupabaseConfigured) return null;
+  const { data, error } = await supabase.storage.from('study-files').createSignedUrl(filePath, 60);
+  if (error) throw error;
+  return data.signedUrl;
 }

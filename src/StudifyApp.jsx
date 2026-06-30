@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Clock3,
-  FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, ListChecks, Menu, Moon,
+  ExternalLink, FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, ListChecks, Menu, Moon,
   LogOut, MoreHorizontal, Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target,
   TimerReset, Trash2, Trophy, Upload, User, X
 } from 'lucide-react';
@@ -12,7 +12,7 @@ import {
   loadRemoteStudyData, updateRemoteExam, updateRemoteNote, updateRemoteSession,
   updateRemoteSubject
 } from './lib/studyDataApi.js';
-import { uploadStudyFile } from './lib/studyFiles.js';
+import { getStudyFileUrl, uploadStudyFile } from './lib/studyFiles.js';
 
 const seed = {
   subjects: [
@@ -269,6 +269,11 @@ function NoteRow({ note, onEdit, onDelete }) {
   return <article className="document-row editable-row"><span className={`file-icon ${note.type === 'DOC' ? 'doc' : ''}`}>{note.type}</span><div><strong>{note.title}</strong><small>{note.subject} · {formatDate(note.date)} · {note.size} · {storageLabel}</small>{note.fileName ? <em>{note.fileName}</em> : null}</div>{onEdit ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : <button aria-label="Mas opciones"><MoreHorizontal size={20} /></button>}</article>;
 }
 
+function NoteRowV2({ note, onEdit, onDelete, onOpen }) {
+  const storageLabel = note.storage === 'supabase' ? 'Supabase' : note.fileName ? 'archivo local' : 'manual';
+  return <article className="document-row editable-row"><span className={`file-icon ${note.type === 'DOC' ? 'doc' : ''}`}>{note.type}</span><div><strong>{note.title}</strong><small>{note.subject} - {formatDate(note.date)} - {note.size} - {storageLabel}</small>{note.fileName ? <em>{note.fileName}</em> : null}</div>{onEdit ? <div className="row-actions">{note.filePath ? <button type="button" onClick={onOpen} aria-label="Abrir archivo"><ExternalLink size={17} /></button> : null}<button type="button" onClick={onEdit} aria-label="Editar"><Pencil size={17} /></button><button type="button" onClick={onDelete} aria-label="Borrar"><Trash2 size={17} /></button></div> : <button aria-label="Mas opciones"><MoreHorizontal size={20} /></button>}</article>;
+}
+
 function BarChart({ bars, tall = false }) {
   return <div className={`bar-chart ${tall ? 'tall' : ''}`}>{bars.map((height, index) => <span key={week[index]} style={{ '--h': `${height}%` }}>{week[index]}</span>)}</div>;
 }
@@ -319,7 +324,7 @@ function HomeView({ data, summary, timer, running, toggleTimer, changeView, togg
   return <section className="view active">
     <div className="today-card"><div><span>Horas de estudio esta semana</span><strong>{summary.hours} h</strong><button onClick={() => changeView('stats')}>Ver estadisticas <ChevronRight size={15} /></button></div><Clock3 size={34} /></div>
     <div className="metrics-grid"><Metric icon={Clock3} tone="purple" label="Horas de estudio" value={`${summary.hours} h`} detail="guardadas en este dispositivo" /><Metric icon={Target} tone="green" label="Sesiones completadas" value={summary.sessions} detail="registros de estudio" /><Metric icon={Flame} tone="orange" label="Racha actual" value={`${summary.streak} dias`} detail="sigue asi" /><Metric icon={FolderOpen} tone="blue" label="Apuntes guardados" value={data.notes.length} detail="documentos" /></div>
-    <div className="dashboard-grid"><section className="panel notes-panel"><div className="panel-heading"><h2>Mis Apuntes Recientes</h2><button className="link-button" onClick={() => changeView('notes')}>Ver todos</button></div><div className="document-list compact">{data.notes.slice(0, 4).map((note) => <NoteRow note={note} key={note.id} />)}</div></section><section className="panel timer-panel"><h2>Pomodoro</h2><TimerRing seconds={timer} /><button className="primary-button wide" onClick={toggleTimer}>{running ? <Pause size={18} /> : <Play size={18} />}{running ? 'Pausar' : 'Iniciar'}</button><button className="secondary-button wide" onClick={() => changeView('pomodoro')}><TimerReset size={18} />Sesiones</button></section><section className="side-stack"><PlanPanel plan={summary.dailyPlan} changeView={changeView} compact /><ExamFocus exam={summary.nextExam} toggleTopic={toggleTopic} /></section></div>
+    <div className="dashboard-grid"><section className="panel notes-panel"><div className="panel-heading"><h2>Mis Apuntes Recientes</h2><button className="link-button" onClick={() => changeView('notes')}>Ver todos</button></div><div className="document-list compact">{data.notes.slice(0, 4).map((note) => <NoteRowV2 note={note} key={note.id} />)}</div></section><section className="panel timer-panel"><h2>Pomodoro</h2><TimerRing seconds={timer} /><button className="primary-button wide" onClick={toggleTimer}>{running ? <Pause size={18} /> : <Play size={18} />}{running ? 'Pausar' : 'Iniciar'}</button><button className="secondary-button wide" onClick={() => changeView('pomodoro')}><TimerReset size={18} />Sesiones</button></section><section className="side-stack"><PlanPanel plan={summary.dailyPlan} changeView={changeView} compact /><ExamFocus exam={summary.nextExam} toggleTopic={toggleTopic} /></section></div>
     <AssistantStrip />
   </section>;
 }
@@ -333,9 +338,12 @@ function NotesView({ data, addNote, updateNote, deleteNote }) {
   const [editing, setEditing] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const submitLock = useRef(false);
   const visible = filter === 'Todos' ? data.notes : data.notes.filter((note) => note.subject === filter);
   const submitNote = async (event) => {
     event.preventDefault();
+    if (submitLock.current) return;
+    submitLock.current = true;
     setUploadStatus('');
     setIsUploading(true);
     const form = new FormData(event.currentTarget);
@@ -366,10 +374,31 @@ function NotesView({ data, addNote, updateNote, deleteNote }) {
     } catch (error) {
       setUploadStatus(error.message || 'No se pudo subir el archivo.');
     } finally {
+      submitLock.current = false;
       setIsUploading(false);
     }
   };
-  return <section className="view active"><div className="content-grid"><div><div className="section-toolbar"><div className="tabs"><button className={filter === 'Todos' ? 'active' : ''} onClick={() => setFilter('Todos')}>Todos</button>{data.subjects.map((subject) => <button className={filter === subject.name ? 'active' : ''} key={subject.id} onClick={() => setFilter(subject.name)}>{subject.name}</button>)}</div><div className="toolbar-actions"><button className="icon-button" aria-label="Buscar"><Search size={20} /></button><button className="primary-button" type="button" onClick={() => document.getElementById('study-file-input')?.click()}><Upload size={18} />Subir apunte</button></div></div><div className="panel document-list">{visible.map((note) => <NoteRow note={note} key={note.id} onEdit={() => setEditing(note)} onDelete={() => window.confirm('Borrar este apunte?') && deleteNote(note.id)} />)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar apunte' : 'Nuevo apunte'} editing={Boolean(editing)} onCancel={() => { setEditing(null); setUploadStatus(''); }} onSubmit={submitNote} submitting={isUploading} submitLabel="Subiendo..."><input name="title" placeholder="Titulo del apunte" defaultValue={editing?.title || ''} key={`title-${editing?.id || 'new'}`} /><select name="subject" defaultValue={editing?.subject || data.subjects[0]?.name} key={`subject-${editing?.id || 'new'}`}>{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><select name="type" defaultValue={editing?.type || 'PDF'} key={`type-${editing?.id || 'new'}`}><option>PDF</option><option>DOC</option><option>LINK</option></select><label className="file-upload-box" htmlFor="study-file-input"><Upload size={19} /><span>Seleccionar PDF, DOC o DOCX</span><small>{editing?.fileName || 'Si Supabase esta activo, se sube al bucket study-files.'}</small></label><input id="study-file-input" className="file-input" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />{uploadStatus ? <p className="upload-status">{uploadStatus}</p> : null}</QuickForm></div></div></section>;
+  const openNote = async (note) => {
+    const tab = window.open('', '_blank', 'noopener,noreferrer');
+    try {
+      setUploadStatus('');
+      const url = await getStudyFileUrl(note.filePath);
+      if (!url) {
+        tab?.close();
+        setUploadStatus('Este apunte no tiene un archivo subido para abrir.');
+        return;
+      }
+      if (tab) {
+        tab.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (error) {
+      tab?.close();
+      setUploadStatus(error.message || 'No se pudo abrir el archivo.');
+    }
+  };
+  return <section className="view active"><div className="content-grid"><div><div className="section-toolbar"><div className="tabs"><button className={filter === 'Todos' ? 'active' : ''} onClick={() => setFilter('Todos')}>Todos</button>{data.subjects.map((subject) => <button className={filter === subject.name ? 'active' : ''} key={subject.id} onClick={() => setFilter(subject.name)}>{subject.name}</button>)}</div><div className="toolbar-actions"><button className="icon-button" aria-label="Buscar"><Search size={20} /></button><button className="primary-button" type="button" disabled={isUploading} onClick={() => document.getElementById('study-file-input')?.click()}><Upload size={18} />Subir apunte</button></div></div><div className="panel document-list">{visible.map((note) => <NoteRowV2 note={note} key={note.id} onOpen={() => openNote(note)} onEdit={() => setEditing(note)} onDelete={() => window.confirm('Borrar este apunte?') && deleteNote(note.id)} />)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar apunte' : 'Nuevo apunte'} editing={Boolean(editing)} onCancel={() => { setEditing(null); setUploadStatus(''); }} onSubmit={submitNote} submitting={isUploading} submitLabel="Subiendo..."><input name="title" placeholder="Titulo del apunte" defaultValue={editing?.title || ''} key={`title-${editing?.id || 'new'}`} /><select name="subject" defaultValue={editing?.subject || data.subjects[0]?.name} key={`subject-${editing?.id || 'new'}`}>{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><select name="type" defaultValue={editing?.type || 'PDF'} key={`type-${editing?.id || 'new'}`}><option>PDF</option><option>DOC</option><option>LINK</option></select><label className="file-upload-box" htmlFor="study-file-input"><Upload size={19} /><span>Seleccionar PDF, DOC o DOCX</span><small>{editing?.fileName || 'Si Supabase esta activo, se sube al bucket study-files.'}</small></label><input id="study-file-input" className="file-input" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={isUploading} />{uploadStatus ? <p className="upload-status">{uploadStatus}</p> : null}</QuickForm></div></div></section>;
 }
 
 function PomodoroView({ data, timer, running, toggleTimer, resetTimer, addSession, updateSession, deleteSession }) {
