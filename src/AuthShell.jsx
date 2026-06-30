@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { cloneElement, isValidElement, useEffect, useState } from 'react';
 import { BookOpen, GraduationCap, LogOut, Mail, UserPlus } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from './lib/supabaseClient.js';
 
@@ -91,7 +91,7 @@ export default function AuthShell({ children }) {
 
   if (user) {
     return <>
-      {children}
+      {isValidElement(children) ? cloneElement(children, { user }) : children}
       <div className="session-chip">
         <div><strong>{user.name}</strong><span>{user.email} · {user.provider === 'supabase' ? 'Supabase' : 'Demo local'}</span></div>
         <button onClick={logout}><LogOut size={17} />Salir</button>

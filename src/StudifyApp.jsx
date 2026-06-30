@@ -5,6 +5,13 @@ import {
   MoreHorizontal, Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target,
   TimerReset, Trash2, Trophy, Upload, User, X
 } from 'lucide-react';
+import { isSupabaseConfigured } from './lib/supabaseClient.js';
+import {
+  createRemoteExam, createRemoteNote, createRemoteSession, createRemoteSubject,
+  deleteRemoteExam, deleteRemoteNote, deleteRemoteSession, deleteRemoteSubject,
+  loadRemoteStudyData, updateRemoteExam, updateRemoteNote, updateRemoteSession,
+  updateRemoteSubject
+} from './lib/studyDataApi.js';
 import { uploadStudyFile } from './lib/studyFiles.js';
 
 const seed = {
@@ -91,19 +98,73 @@ function IconButton({ label, children, onClick }) {
   return <button className="icon-button" aria-label={label} title={label} onClick={onClick}>{children}</button>;
 }
 
-function useStudyData() {
+function useStudyData(user) {
   const [data, setData] = useState(readData);
-  useEffect(() => localStorage.setItem('studify-data', JSON.stringify(data)), [data]);
+  const [sync, setSync] = useState({ provider: 'local', status: 'local', message: 'Datos guardados localmente.' });
+  const remoteUserId = user?.provider === 'supabase' ? user.id : null;
+
+  useEffect(() => {
+    let active = true;
+    if (!isSupabaseConfigured || !remoteUserId) {
+      setSync({ provider: 'local', status: 'local', message: 'Datos guardados localmente.' });
+      return undefined;
+    }
+
+    setSync({ provider: 'supabase', status: 'loading', message: 'Sincronizando con Supabase...' });
+    loadRemoteStudyData()
+      .then((remote) => {
+        if (!active || !remote) return;
+        setData(remote.data);
+        setSync({ provider: 'supabase', status: 'ready', message: 'Sincronizado con Supabase.' });
+      })
+      .catch((error) => {
+        if (!active) return;
+        setSync({ provider: 'local', status: 'error', message: error.message || 'No se pudo cargar Supabase.' });
+      });
+
+    return () => { active = false; };
+  }, [remoteUserId]);
+
+  useEffect(() => {
+    if (sync.provider !== 'supabase') localStorage.setItem('studify-data', JSON.stringify(data));
+  }, [data, sync.provider]);
+
+  const remote = (task) => {
+    if (!remoteUserId || sync.provider !== 'supabase') return;
+    task().catch((error) => setSync({ provider: 'supabase', status: 'error', message: error.message || 'No se pudo guardar en Supabase.' }));
+  };
 
   return {
     data,
-    addNote: (note) => setData((current) => ({ ...current, notes: [{ id: id('note'), date: today(), size: 'Manual', ...note }, ...current.notes] })),
-    updateNote: (noteId, patch) => setData((current) => ({ ...current, notes: current.notes.map((note) => note.id === noteId ? { ...note, ...patch } : note) })),
-    deleteNote: (noteId) => setData((current) => ({ ...current, notes: current.notes.filter((note) => note.id !== noteId) })),
-    addSubject: (subject) => setData((current) => ({ ...current, subjects: [{ id: id('subject'), ...subject }, ...current.subjects] })),
+    sync,
+    addNote: (note) => setData((current) => {
+      const localNote = { id: id('note'), date: today(), size: 'Manual', ...note };
+      remote(async () => {
+        const remoteId = await createRemoteNote(remoteUserId, current.subjects, localNote);
+        setData((latest) => ({ ...latest, notes: latest.notes.map((item) => item.id === localNote.id ? { ...item, id: remoteId } : item) }));
+      });
+      return { ...current, notes: [localNote, ...current.notes] };
+    }),
+    updateNote: (noteId, patch) => setData((current) => {
+      remote(() => updateRemoteNote(noteId, current.subjects, patch));
+      return { ...current, notes: current.notes.map((note) => note.id === noteId ? { ...note, ...patch } : note) };
+    }),
+    deleteNote: (noteId) => {
+      setData((current) => ({ ...current, notes: current.notes.filter((note) => note.id !== noteId) }));
+      remote(() => deleteRemoteNote(noteId));
+    },
+    addSubject: (subject) => setData((current) => {
+      const localSubject = { id: id('subject'), ...subject };
+      remote(async () => {
+        const remoteSubject = await createRemoteSubject(remoteUserId, localSubject);
+        setData((latest) => ({ ...latest, subjects: latest.subjects.map((item) => item.id === localSubject.id ? remoteSubject : item) }));
+      });
+      return { ...current, subjects: [localSubject, ...current.subjects] };
+    }),
     updateSubject: (subjectId, patch) => setData((current) => {
       const original = current.subjects.find((subject) => subject.id === subjectId);
       const nextName = patch.name || original?.name;
+      remote(() => updateRemoteSubject(subjectId, patch));
       return {
         ...current,
         subjects: current.subjects.map((subject) => subject.id === subjectId ? { ...subject, ...patch } : subject),
@@ -112,19 +173,52 @@ function useStudyData() {
         sessions: current.sessions.map((session) => session.subject === original?.name ? { ...session, subject: nextName } : session)
       };
     }),
-    deleteSubject: (subjectId) => setData((current) => ({ ...current, subjects: current.subjects.filter((subject) => subject.id !== subjectId) })),
-    addExam: (exam) => setData((current) => ({ ...current, exams: [{ id: id('exam'), completedTopics: [], ...exam }, ...current.exams] })),
-    updateExam: (examId, patch) => setData((current) => ({ ...current, exams: current.exams.map((exam) => exam.id === examId ? { ...exam, ...patch, completedTopics: exam.completedTopics.filter((topic) => patch.topics?.includes(topic) ?? true) } : exam) })),
-    deleteExam: (examId) => setData((current) => ({ ...current, exams: current.exams.filter((exam) => exam.id !== examId) })),
-    addSession: (session) => setData((current) => ({ ...current, sessions: [{ id: id('session'), date: today(), ...session }, ...current.sessions] })),
-    updateSession: (sessionId, patch) => setData((current) => ({ ...current, sessions: current.sessions.map((session) => session.id === sessionId ? { ...session, ...patch } : session) })),
-    deleteSession: (sessionId) => setData((current) => ({ ...current, sessions: current.sessions.filter((session) => session.id !== sessionId) })),
+    deleteSubject: (subjectId) => {
+      setData((current) => ({ ...current, subjects: current.subjects.filter((subject) => subject.id !== subjectId) }));
+      remote(() => deleteRemoteSubject(subjectId));
+    },
+    addExam: (exam) => setData((current) => {
+      const localExam = { id: id('exam'), completedTopics: [], ...exam };
+      remote(async () => {
+        const remoteId = await createRemoteExam(remoteUserId, current.subjects, localExam);
+        setData((latest) => ({ ...latest, exams: latest.exams.map((item) => item.id === localExam.id ? { ...item, id: remoteId } : item) }));
+      });
+      return { ...current, exams: [localExam, ...current.exams] };
+    }),
+    updateExam: (examId, patch) => setData((current) => {
+      const nextExams = current.exams.map((exam) => exam.id === examId ? { ...exam, ...patch, completedTopics: exam.completedTopics.filter((topic) => patch.topics?.includes(topic) ?? true) } : exam);
+      const nextExam = nextExams.find((exam) => exam.id === examId);
+      remote(() => updateRemoteExam(examId, current.subjects, nextExam));
+      return { ...current, exams: nextExams };
+    }),
+    deleteExam: (examId) => {
+      setData((current) => ({ ...current, exams: current.exams.filter((exam) => exam.id !== examId) }));
+      remote(() => deleteRemoteExam(examId));
+    },
+    addSession: (session) => setData((current) => {
+      const localSession = { id: id('session'), date: today(), ...session };
+      remote(async () => {
+        const remoteId = await createRemoteSession(remoteUserId, current.subjects, localSession);
+        setData((latest) => ({ ...latest, sessions: latest.sessions.map((item) => item.id === localSession.id ? { ...item, id: remoteId } : item) }));
+      });
+      return { ...current, sessions: [localSession, ...current.sessions] };
+    }),
+    updateSession: (sessionId, patch) => setData((current) => {
+      remote(() => updateRemoteSession(sessionId, current.subjects, patch));
+      return { ...current, sessions: current.sessions.map((session) => session.id === sessionId ? { ...session, ...patch } : session) };
+    }),
+    deleteSession: (sessionId) => {
+      setData((current) => ({ ...current, sessions: current.sessions.filter((session) => session.id !== sessionId) }));
+      remote(() => deleteRemoteSession(sessionId));
+    },
     toggleTopic: (examId, topic) => setData((current) => ({
       ...current,
       exams: current.exams.map((exam) => {
         if (exam.id !== examId) return exam;
         const done = exam.completedTopics.includes(topic);
-        return { ...exam, completedTopics: done ? exam.completedTopics.filter((item) => item !== topic) : [...exam.completedTopics, topic] };
+        const nextExam = { ...exam, completedTopics: done ? exam.completedTopics.filter((item) => item !== topic) : [...exam.completedTopics, topic] };
+        remote(() => updateRemoteExam(examId, current.subjects, { completedTopics: nextExam.completedTopics }));
+        return nextExam;
       })
     }))
   };
@@ -141,12 +235,12 @@ function Sidebar({ active, open, changeView, close }) {
   </aside>;
 }
 
-function Header({ active, openMenu, changeView }) {
+function Header({ active, openMenu, changeView, sync }) {
   const [title, subtitle] = pages[active];
   return <header className="topbar">
     <IconButton label="Abrir menu" onClick={openMenu}><Menu size={22} /></IconButton>
     <div className="title-block"><h1>{title}{active === 'home' ? '!' : ''}</h1><p>{subtitle}</p></div>
-    <div className="top-actions"><IconButton label="Notificaciones"><Bell size={20} /></IconButton><IconButton label="Modo oscuro"><Moon size={20} /></IconButton><button className="primary-button" onClick={() => changeView('notes')}><Plus size={18} />Nuevo Apunte</button></div>
+    <div className="top-actions"><span className={`sync-pill ${sync?.status || 'local'}`}>{sync?.provider === 'supabase' ? 'Supabase' : 'Local'}</span><IconButton label="Notificaciones"><Bell size={20} /></IconButton><IconButton label="Modo oscuro"><Moon size={20} /></IconButton><button className="primary-button" onClick={() => changeView('notes')}><Plus size={18} />Nuevo Apunte</button></div>
   </header>;
 }
 
@@ -331,8 +425,8 @@ function ProfileView({ data, addSubject, updateSubject, deleteSubject, summary }
   return <section className="view active"><div className="content-grid"><div className="panel profile-panel"><div className="profile-head"><div className="avatar large"><User size={42} /></div><div><h2>Usuario</h2><p>estudiante@mail.com</p><button className="primary-button small">Editar perfil</button></div></div><div className="profile-stats"><p><Flame size={20} />Racha actual <b>{summary.streak} dias</b></p><p><Clock3 size={20} />Horas totales <b>{summary.totalHours} h</b></p><p><Target size={20} />Sesiones completadas <b>{data.sessions.length}</b></p><p><FolderOpen size={20} />Apuntes guardados <b>{data.notes.length}</b></p><p><BarChart3 size={20} />Materias <b>{data.subjects.length}</b></p><p><Trophy size={20} />Examenes <b>{data.exams.length}</b></p></div><div className="subject-list-panel"><h3>Materias</h3>{data.subjects.map((subject) => <article className="subject-card" key={subject.id}><span className={`dot ${subject.color}`} /><div><strong>{subject.name}</strong><small>{summary.subjectHours[subject.name] || 0} h estudiadas · objetivo {subject.targetHours} h</small></div><RowActions onEdit={() => setEditing(subject)} onDelete={() => window.confirm('Borrar esta materia? Los apuntes y sesiones anteriores conservan su nombre historico.') && deleteSubject(subject.id)} /></article>)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar materia' : 'Nueva materia'} editing={Boolean(editing)} onCancel={() => setEditing(null)} onSubmit={submitSubject}><input name="name" required placeholder="Nombre de la materia" defaultValue={editing?.name || ''} key={`subject-name-${editing?.id || 'new'}`} /><input name="targetHours" min="1" type="number" placeholder="Horas objetivo" defaultValue={editing?.targetHours || ''} key={`subject-hours-${editing?.id || 'new'}`} /><select name="color" defaultValue={editing?.color || 'purple'} key={`subject-color-${editing?.id || 'new'}`}><option value="purple">Violeta</option><option value="green">Verde</option><option value="orange">Naranja</option><option value="blue">Azul</option></select></QuickForm></div></div></section>;
 }
 
-export default function StudifyApp() {
-  const { data, addNote, updateNote, deleteNote, addSubject, updateSubject, deleteSubject, addExam, updateExam, deleteExam, addSession, updateSession, deleteSession, toggleTopic } = useStudyData();
+export default function StudifyApp({ user }) {
+  const { data, sync, addNote, updateNote, deleteNote, addSubject, updateSubject, deleteSubject, addExam, updateExam, deleteExam, addSession, updateSession, deleteSession, toggleTopic } = useStudyData(user);
   const [active, setActive] = useState('home');
   const [menuOpen, setMenuOpen] = useState(false);
   const [timer, setTimer] = useState(1500);
@@ -378,5 +472,5 @@ export default function StudifyApp() {
   const changeView = (view) => { setActive(view); setMenuOpen(false); };
   const resetTimer = () => { setRunning(false); setTimer(1500); };
 
-  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} updateSession={updateSession} deleteSession={deleteSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} updateSubject={updateSubject} deleteSubject={deleteSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
+  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} sync={sync} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} updateSession={updateSession} deleteSession={deleteSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} updateSubject={updateSubject} deleteSubject={deleteSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
 }

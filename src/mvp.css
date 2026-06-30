@@ -285,6 +285,29 @@
   white-space: nowrap;
 }
 
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--primary);
+  background: #f0efff;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.sync-pill.error {
+  color: #d84444;
+  background: #fff2f2;
+}
+
+.sync-pill.loading {
+  color: #277ee8;
+  background: #edf5ff;
+}
+
 .progress-track {
   width: 100%;
   height: 9px;
