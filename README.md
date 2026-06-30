@@ -6,7 +6,8 @@ Studify es una aplicacion para estudiantes enfocada en organizar el tiempo de es
 
 El proyecto esta armado como una app React con Vite. Esta version ya funciona como un MVP local:
 
-- Login y registro visual con sesion local simulada.
+- Login y registro visual con fallback local.
+- Login y registro reales con Supabase Auth cuando existen variables `.env.local`.
 - Dashboard con resumen semanal, racha, sesiones y apuntes guardados.
 - Plan de Hoy calculado desde el examen mas urgente, temas pendientes y horas restantes.
 - Materias creadas, editadas y eliminadas desde el perfil.
@@ -16,7 +17,8 @@ El proyecto esta armado como una app React con Vite. Esta version ya funciona co
 - Estadisticas calculadas desde las sesiones guardadas.
 - Creacion, edicion y eliminacion de examenes con fecha, materia y lista de temas.
 - Cliente Supabase preparado para auth, base de datos y storage de archivos.
-- Persistencia actual en el navegador mediante `localStorage`.
+- Helper `uploadStudyFile` preparado para subir PDF/DOC al bucket `study-files`.
+- Persistencia actual de datos de estudio en el navegador mediante `localStorage`.
 
 ## Desarrollo local
 
@@ -37,6 +39,7 @@ El proyecto ya incluye:
 
 - `.env.example` con las variables necesarias.
 - `src/lib/supabaseClient.js` para crear el cliente de Supabase.
+- `src/lib/studyFiles.js` para preparar/subir archivos de estudio.
 - `supabase/schema.sql` con tablas iniciales, RLS y bucket `study-files` para PDFs/DOCs.
 
 Para conectar Supabase:
@@ -45,7 +48,7 @@ Para conectar Supabase:
 2. Copiar `.env.example` como `.env.local`.
 3. Completar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
 4. Ejecutar el SQL de `supabase/schema.sql` en el editor SQL de Supabase.
-5. Reemplazar la sesion local por Supabase Auth.
+5. Probar registro/login desde la app.
 
 ## Demo con GitHub Pages
 
@@ -63,8 +66,8 @@ https://brunobusnelli.github.io/Studify/
 
 ## Proximos pasos sugeridos
 
-1. Conectar login real con Supabase Auth.
+1. Conectar el selector visual de PDF/DOC en Mis Apuntes con `uploadStudyFile`.
 2. Migrar materias, apuntes, sesiones y examenes desde `localStorage` a Supabase.
-3. Agregar subida real de archivos PDF/DOC a Supabase Storage.
+3. Guardar registros de apuntes en la tabla `notes` junto al `file_path` de Storage.
 4. Extraer texto de archivos y conectar resumen/preguntas con IA.
 5. Separar componentes por carpeta cuando crezca la app.
