@@ -138,7 +138,9 @@
   background: #fbfbfe;
 }
 
-.plan-grid small {
+.plan-grid small,
+.subject-card small,
+.session-card small {
   font-weight: 700;
 }
 
@@ -146,10 +148,12 @@
   font-size: 20px;
 }
 
-.explain-list {
+.explain-list,
+.subject-list-panel,
+.session-list {
   display: grid;
   gap: 12px;
-  margin: 18px 0;
+  margin-top: 18px;
 }
 
 .explain-list p {
@@ -158,6 +162,41 @@
   color: var(--muted);
   background: #fbfbfe;
   border: 1px solid var(--line);
+}
+
+.subject-card,
+.session-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 66px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.session-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.subject-card strong,
+.subject-card small,
+.session-card strong,
+.session-card small {
+  display: block;
+}
+
+.subject-card small,
+.session-card small {
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.session-panel {
+  display: grid;
+  gap: 18px;
 }
 
 .focus-panel {
@@ -278,6 +317,13 @@
   margin-bottom: 14px;
 }
 
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .dot.green { background: var(--green); }
 .dot.purple { background: var(--primary); }
 .dot.orange { background: var(--orange); }
@@ -326,6 +372,8 @@
     font-size: 24px;
   }
 
+  .subject-card,
+  .session-card,
   .exam-card {
     grid-template-columns: 1fr;
   }
