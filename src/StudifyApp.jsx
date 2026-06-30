@@ -37,6 +37,13 @@ const seed = {
   ]
 };
 
+const emptyStudyData = {
+  subjects: [],
+  notes: [],
+  exams: [],
+  sessions: []
+};
+
 const pages = {
   home: ['Hola, Usuario', 'La disciplina de hoy es el exito de manana.'],
   plan: ['Plan de Hoy', 'Una guia concreta para avanzar sin perder foco.'],
@@ -99,9 +106,14 @@ function IconButton({ label, children, onClick }) {
 }
 
 function useStudyData(user) {
-  const [data, setData] = useState(readData);
-  const [sync, setSync] = useState({ provider: 'local', status: 'local', message: 'Datos guardados localmente.' });
   const remoteUserId = user?.provider === 'supabase' ? user.id : null;
+  const startsRemote = isSupabaseConfigured && Boolean(remoteUserId);
+  const [data, setData] = useState(() => (startsRemote ? emptyStudyData : readData()));
+  const [sync, setSync] = useState(() => (
+    startsRemote
+      ? { provider: 'supabase', status: 'loading', message: 'Sincronizando con Supabase...' }
+      : { provider: 'local', status: 'local', message: 'Datos guardados localmente.' }
+  ));
 
   useEffect(() => {
     let active = true;
@@ -471,6 +483,17 @@ export default function StudifyApp({ user }) {
 
   const changeView = (view) => { setActive(view); setMenuOpen(false); };
   const resetTimer = () => { setRunning(false); setTimer(1500); };
+
+  if (sync.provider === 'supabase' && sync.status === 'loading') {
+    return <main className="auth-page">
+      <section className="auth-card">
+        <div>
+          <h2>Cargando Studify</h2>
+          <p>Sincronizando tus datos con Supabase.</p>
+        </div>
+      </section>
+    </main>;
+  }
 
   return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} sync={sync} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} updateSession={updateSession} deleteSession={deleteSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} updateSubject={updateSubject} deleteSubject={deleteSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
 }
