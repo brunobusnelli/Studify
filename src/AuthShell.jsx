@@ -35,7 +35,7 @@ export default function AuthShell({ children }) {
     if (!isSupabaseConfigured) return undefined;
 
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) setUser(profileFromSupabaseUser(data.session.user));
+      setUser(data.session?.user ? profileFromSupabaseUser(data.session.user) : null);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
