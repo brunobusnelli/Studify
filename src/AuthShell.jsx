@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, GraduationCap, LogOut, Mail, UserPlus } from 'lucide-react';
+import { isSupabaseConfigured, supabase } from './lib/supabaseClient.js';
 
 const defaultUser = {
   name: 'Usuario',
-  email: 'estudiante@mail.com'
+  email: 'estudiante@mail.com',
+  provider: 'demo'
 };
 
 function readUser() {
@@ -14,9 +16,34 @@ function readUser() {
   }
 }
 
+function profileFromSupabaseUser(user) {
+  return {
+    id: user.id,
+    name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuario',
+    email: user.email,
+    provider: 'supabase'
+  };
+}
+
 export default function AuthShell({ children }) {
   const [mode, setMode] = useState('login');
   const [user, setUser] = useState(readUser);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) setUser(profileFromSupabaseUser(data.session.user));
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ? profileFromSupabaseUser(session.user) : null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -26,21 +53,48 @@ export default function AuthShell({ children }) {
     }
   }, [user]);
 
-  const submitAuth = (event) => {
+  const submitAuth = async (event) => {
     event.preventDefault();
+    setMessage('');
     const form = new FormData(event.currentTarget);
-    setUser({
-      name: form.get('name') || defaultUser.name,
-      email: form.get('email') || defaultUser.email
-    });
+    const email = form.get('email') || defaultUser.email;
+    const password = form.get('password') || 'studify-demo';
+    const name = form.get('name') || defaultUser.name;
+
+    if (!isSupabaseConfigured) {
+      setUser({ name, email, provider: 'demo' });
+      return;
+    }
+
+    setLoading(true);
+    const response = mode === 'login'
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password, options: { data: { name } } });
+
+    setLoading(false);
+
+    if (response.error) {
+      setMessage(response.error.message);
+      return;
+    }
+
+    if (response.data.user) {
+      setUser(profileFromSupabaseUser(response.data.user));
+      setMessage(mode === 'register' ? 'Cuenta creada. Revisa tu email si Supabase pide confirmacion.' : 'Sesion iniciada.');
+    }
+  };
+
+  const logout = async () => {
+    if (isSupabaseConfigured) await supabase.auth.signOut();
+    setUser(null);
   };
 
   if (user) {
     return <>
       {children}
       <div className="session-chip">
-        <div><strong>{user.name}</strong><span>{user.email}</span></div>
-        <button onClick={() => setUser(null)}><LogOut size={17} />Salir</button>
+        <div><strong>{user.name}</strong><span>{user.email} · {user.provider === 'supabase' ? 'Supabase' : 'Demo local'}</span></div>
+        <button onClick={logout}><LogOut size={17} />Salir</button>
       </div>
     </>;
   }
@@ -52,7 +106,7 @@ export default function AuthShell({ children }) {
       <p>Organiza materias, examenes, sesiones de estudio y apuntes en un solo lugar.</p>
       <div className="auth-feature-list">
         <span><BookOpen size={18} /> Plan de Hoy inteligente</span>
-        <span><Mail size={18} /> Cuenta preparada para Supabase</span>
+        <span><Mail size={18} /> {isSupabaseConfigured ? 'Supabase Auth activo' : 'Modo demo sin credenciales'}</span>
       </div>
     </section>
 
@@ -65,9 +119,10 @@ export default function AuthShell({ children }) {
         {mode === 'register' ? <input name="name" placeholder="Nombre" /> : null}
         <input name="email" type="email" placeholder="Email" defaultValue="estudiante@mail.com" />
         <input name="password" type="password" placeholder="Contrasena" defaultValue="studify-demo" />
-        <button className="primary-button" type="submit">{mode === 'login' ? <Mail size={18} /> : <UserPlus size={18} />}{mode === 'login' ? 'Entrar' : 'Registrarme'}</button>
+        {message ? <p className="auth-message">{message}</p> : null}
+        <button className="primary-button" type="submit" disabled={loading}>{mode === 'login' ? <Mail size={18} /> : <UserPlus size={18} />}{loading ? 'Procesando...' : mode === 'login' ? 'Entrar' : 'Registrarme'}</button>
       </form>
-      <button className="link-button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
+      <button className="link-button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setMessage(''); }}>
         {mode === 'login' ? 'Crear una cuenta nueva' : 'Ya tengo cuenta'}
       </button>
     </section>
