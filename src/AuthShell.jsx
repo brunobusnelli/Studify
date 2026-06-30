@@ -44,19 +44,25 @@ function friendlyAuthError(message) {
 
 export default function AuthShell({ children }) {
   const [mode, setMode] = useState('login');
-  const [user, setUser] = useState(readUser);
+  const [user, setUser] = useState(() => (isSupabaseConfigured ? null : readUser()));
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
 
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ? profileFromSupabaseUser(data.session.user) : null);
+      setAuthReady(true);
+    }).catch(() => {
+      setUser(null);
+      setAuthReady(true);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ? profileFromSupabaseUser(session.user) : null);
+      setAuthReady(true);
     });
 
     return () => listener.subscription.unsubscribe();
@@ -105,6 +111,17 @@ export default function AuthShell({ children }) {
     if (isSupabaseConfigured) await supabase.auth.signOut();
     setUser(null);
   };
+
+  if (!authReady) {
+    return <main className="auth-page">
+      <section className="auth-card">
+        <div>
+          <h2>Cargando Studify</h2>
+          <p>Conectando tu sesion con Supabase.</p>
+        </div>
+      </section>
+    </main>;
+  }
 
   if (user) {
     return <>
