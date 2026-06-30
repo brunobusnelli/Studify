@@ -125,7 +125,7 @@ export default function AuthShell({ children }) {
 
   if (user) {
     return <>
-      {isValidElement(children) ? cloneElement(children, { user }) : children}
+      {isValidElement(children) ? cloneElement(children, { user, onLogout: logout }) : children}
       <div className="session-chip">
         <div><strong>{user.name}</strong><span>{user.email} · {user.provider === 'supabase' ? 'Supabase' : 'Demo local'}</span></div>
         <button onClick={logout}><LogOut size={17} />Salir</button>

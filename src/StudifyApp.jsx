@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Clock3,
   FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, ListChecks, Menu, Moon,
-  MoreHorizontal, Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target,
+  LogOut, MoreHorizontal, Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target,
   TimerReset, Trash2, Trophy, Upload, User, X
 } from 'lucide-react';
 import { isSupabaseConfigured } from './lib/supabaseClient.js';
@@ -236,14 +236,14 @@ function useStudyData(user) {
   };
 }
 
-function Sidebar({ active, open, changeView, close }) {
+function Sidebar({ active, open, changeView, close, user }) {
   return <aside className={`sidebar ${open ? 'open' : ''}`}>
     <div className="sidebar-top">
       <div className="brand"><span className="brand-mark"><GraduationCap size={28} /></span><div><strong>Studify</strong><span>Tu estudio, mejor organizado.</span></div></div>
       <IconButton label="Cerrar menu" onClick={close}><X size={18} /></IconButton>
     </div>
     <nav className="side-nav">{nav.map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={21} /><span>{label}</span></button>)}</nav>
-    <div className="profile-mini"><div className="avatar"><User size={24} /></div><div><strong>Usuario</strong><span>estudiante@mail.com</span></div><ChevronDown size={18} /></div>
+    <div className="profile-mini"><div className="avatar"><User size={24} /></div><div><strong>{user?.name || 'Usuario'}</strong><span>{user?.email || 'estudiante@mail.com'}</span></div><ChevronDown size={18} /></div>
   </aside>;
 }
 
@@ -420,8 +420,9 @@ function TechniquesView() {
   return <section className="view active"><div className="panel techniques-list"><div className="tabs"><button className="active">Todas</button><button>Productividad</button><button>Memorizacion</button><button>Comprension</button></div>{techniques.map(([Icon, title, body]) => <article className="technique-row" key={title}><span className="technique-emoji"><Icon size={32} /></span><div><strong>{title}</strong><p>{body}</p></div><button aria-label="Abrir tecnica"><ChevronRight size={20} /></button></article>)}</div></section>;
 }
 
-function ProfileView({ data, addSubject, updateSubject, deleteSubject, summary }) {
+function ProfileView({ data, addSubject, updateSubject, deleteSubject, summary, user, onLogout, sync }) {
   const [editing, setEditing] = useState(null);
+  const [status, setStatus] = useState('');
   const submitSubject = (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -429,15 +430,37 @@ function ProfileView({ data, addSubject, updateSubject, deleteSubject, summary }
     if (editing) {
       updateSubject(editing.id, payload);
       setEditing(null);
+      setStatus('Materia actualizada. Se esta sincronizando con Supabase.');
     } else {
       addSubject(payload);
+      setStatus('Materia creada. Se esta sincronizando con Supabase.');
     }
     event.currentTarget.reset();
   };
   return <section className="view active"><div className="content-grid"><div className="panel profile-panel"><div className="profile-head"><div className="avatar large"><User size={42} /></div><div><h2>Usuario</h2><p>estudiante@mail.com</p><button className="primary-button small">Editar perfil</button></div></div><div className="profile-stats"><p><Flame size={20} />Racha actual <b>{summary.streak} dias</b></p><p><Clock3 size={20} />Horas totales <b>{summary.totalHours} h</b></p><p><Target size={20} />Sesiones completadas <b>{data.sessions.length}</b></p><p><FolderOpen size={20} />Apuntes guardados <b>{data.notes.length}</b></p><p><BarChart3 size={20} />Materias <b>{data.subjects.length}</b></p><p><Trophy size={20} />Examenes <b>{data.exams.length}</b></p></div><div className="subject-list-panel"><h3>Materias</h3>{data.subjects.map((subject) => <article className="subject-card" key={subject.id}><span className={`dot ${subject.color}`} /><div><strong>{subject.name}</strong><small>{summary.subjectHours[subject.name] || 0} h estudiadas · objetivo {subject.targetHours} h</small></div><RowActions onEdit={() => setEditing(subject)} onDelete={() => window.confirm('Borrar esta materia? Los apuntes y sesiones anteriores conservan su nombre historico.') && deleteSubject(subject.id)} /></article>)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar materia' : 'Nueva materia'} editing={Boolean(editing)} onCancel={() => setEditing(null)} onSubmit={submitSubject}><input name="name" required placeholder="Nombre de la materia" defaultValue={editing?.name || ''} key={`subject-name-${editing?.id || 'new'}`} /><input name="targetHours" min="1" type="number" placeholder="Horas objetivo" defaultValue={editing?.targetHours || ''} key={`subject-hours-${editing?.id || 'new'}`} /><select name="color" defaultValue={editing?.color || 'purple'} key={`subject-color-${editing?.id || 'new'}`}><option value="purple">Violeta</option><option value="green">Verde</option><option value="orange">Naranja</option><option value="blue">Azul</option></select></QuickForm></div></div></section>;
 }
 
-export default function StudifyApp({ user }) {
+function ProfileViewV2({ data, addSubject, updateSubject, deleteSubject, summary, user, onLogout, sync }) {
+  const [editing, setEditing] = useState(null);
+  const [status, setStatus] = useState('');
+  const submitSubject = (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const payload = { name: form.get('name'), targetHours: Number(form.get('targetHours') || 5), color: form.get('color') };
+    if (editing) {
+      updateSubject(editing.id, payload);
+      setEditing(null);
+      setStatus('Materia actualizada. Se esta sincronizando con Supabase.');
+    } else {
+      addSubject(payload);
+      setStatus('Materia creada. Se esta sincronizando con Supabase.');
+    }
+    event.currentTarget.reset();
+  };
+  return <section className="view active"><div className="content-grid"><div className="panel profile-panel"><div className="profile-head"><div className="avatar large"><User size={42} /></div><div><h2>{user?.name || 'Usuario'}</h2><p>{user?.email || 'estudiante@mail.com'}</p><span className={`sync-pill ${sync?.status || 'local'}`}>{sync?.provider === 'supabase' ? 'Cuenta Supabase' : 'Demo local'}</span></div>{onLogout ? <button className="secondary-button compact" type="button" onClick={onLogout}><LogOut size={18} />Salir</button> : null}</div><div className="profile-stats"><p><Flame size={20} />Racha actual <b>{summary.streak} dias</b></p><p><Clock3 size={20} />Horas totales <b>{summary.totalHours} h</b></p><p><Target size={20} />Sesiones completadas <b>{data.sessions.length}</b></p><p><FolderOpen size={20} />Apuntes guardados <b>{data.notes.length}</b></p><p><BarChart3 size={20} />Materias <b>{data.subjects.length}</b></p><p><Trophy size={20} />Examenes <b>{data.exams.length}</b></p></div><div className="subject-list-panel"><h3>Materias</h3>{data.subjects.length ? data.subjects.map((subject) => <article className="subject-card" key={subject.id}><span className={`dot ${subject.color}`} /><div><strong>{subject.name}</strong><small>{summary.subjectHours[subject.name] || 0} h estudiadas - objetivo {subject.targetHours} h</small></div><RowActions onEdit={() => { setEditing(subject); setStatus(''); }} onDelete={() => window.confirm('Borrar esta materia? Los apuntes y sesiones anteriores conservan su nombre historico.') && deleteSubject(subject.id)} /></article>) : <p className="empty-state">Todavia no cargaste materias.</p>}</div></div><div className="panel"><QuickForm title={editing ? 'Editar materia' : 'Nueva materia'} editing={Boolean(editing)} onCancel={() => { setEditing(null); setStatus(''); }} onSubmit={submitSubject}><input name="name" required placeholder="Nombre de la materia" defaultValue={editing?.name || ''} key={`subject-name-${editing?.id || 'new'}`} /><input name="targetHours" min="1" type="number" placeholder="Horas objetivo" defaultValue={editing?.targetHours || ''} key={`subject-hours-${editing?.id || 'new'}`} /><select name="color" defaultValue={editing?.color || 'purple'} key={`subject-color-${editing?.id || 'new'}`}><option value="purple">Violeta</option><option value="green">Verde</option><option value="orange">Naranja</option><option value="blue">Azul</option></select>{status ? <p className="upload-status">{status}</p> : null}{sync?.message ? <p className={`save-status ${sync.status || 'local'}`}>{sync.message}</p> : null}</QuickForm></div></div></section>;
+}
+
+export default function StudifyApp({ user, onLogout }) {
   const { data, sync, addNote, updateNote, deleteNote, addSubject, updateSubject, deleteSubject, addExam, updateExam, deleteExam, addSession, updateSession, deleteSession, toggleTopic } = useStudyData(user);
   const [active, setActive] = useState('home');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -495,5 +518,5 @@ export default function StudifyApp({ user }) {
     </main>;
   }
 
-  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} sync={sync} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} updateSession={updateSession} deleteSession={deleteSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} updateSubject={updateSubject} deleteSubject={deleteSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
+  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} user={user} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} sync={sync} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} updateSession={updateSession} deleteSession={deleteSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileViewV2 data={data} addSubject={addSubject} updateSubject={updateSubject} deleteSubject={deleteSubject} summary={summary} user={user} onLogout={onLogout} sync={sync} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
 }
