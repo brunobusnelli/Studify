@@ -5,6 +5,7 @@ import {
   MoreHorizontal, Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target,
   TimerReset, Trash2, Trophy, Upload, User, X
 } from 'lucide-react';
+import { uploadStudyFile } from './lib/studyFiles.js';
 
 const seed = {
   subjects: [
@@ -158,7 +159,8 @@ function RowActions({ onEdit, onDelete }) {
 }
 
 function NoteRow({ note, onEdit, onDelete }) {
-  return <article className="document-row editable-row"><span className={`file-icon ${note.type === 'DOC' ? 'doc' : ''}`}>{note.type}</span><div><strong>{note.title}</strong><small>{note.subject} · {formatDate(note.date)} · {note.size}</small></div>{onEdit ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : <button aria-label="Mas opciones"><MoreHorizontal size={20} /></button>}</article>;
+  const storageLabel = note.storage === 'supabase' ? 'Supabase' : note.fileName ? 'archivo local' : 'manual';
+  return <article className="document-row editable-row"><span className={`file-icon ${note.type === 'DOC' ? 'doc' : ''}`}>{note.type}</span><div><strong>{note.title}</strong><small>{note.subject} · {formatDate(note.date)} · {note.size} · {storageLabel}</small>{note.fileName ? <em>{note.fileName}</em> : null}</div>{onEdit ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : <button aria-label="Mas opciones"><MoreHorizontal size={20} /></button>}</article>;
 }
 
 function BarChart({ bars, tall = false }) {
@@ -170,8 +172,8 @@ function TimerRing({ seconds, large }) {
   return <div className={`timer-ring ${large ? 'large' : ''}`} style={{ '--progress': progress }}><span>{formatTime(seconds)}</span><small>Tiempo de estudio</small></div>;
 }
 
-function QuickForm({ title, children, onSubmit, editing, onCancel }) {
-  return <form className="quick-form" onSubmit={onSubmit}><div className="form-heading"><h3>{title}</h3>{editing ? <button type="button" className="link-button" onClick={onCancel}>Cancelar</button> : null}</div>{children}<button className="primary-button" type="submit">{editing ? <Pencil size={17} /> : <Plus size={17} />}{editing ? 'Guardar cambios' : 'Guardar'}</button></form>;
+function QuickForm({ title, children, onSubmit, editing, onCancel, submitting = false, submitLabel }) {
+  return <form className="quick-form" onSubmit={onSubmit}><div className="form-heading"><h3>{title}</h3>{editing ? <button type="button" className="link-button" onClick={onCancel}>Cancelar</button> : null}</div>{children}<button className="primary-button" type="submit" disabled={submitting}>{submitting ? <Upload size={17} /> : editing ? <Pencil size={17} /> : <Plus size={17} />}{submitting ? submitLabel || 'Guardando...' : editing ? 'Guardar cambios' : 'Guardar'}</button></form>;
 }
 
 function PlanPanel({ plan, changeView, compact = false }) {
@@ -223,20 +225,45 @@ function PlanView({ summary, changeView }) {
 function NotesView({ data, addNote, updateNote, deleteNote }) {
   const [filter, setFilter] = useState('Todos');
   const [editing, setEditing] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const visible = filter === 'Todos' ? data.notes : data.notes.filter((note) => note.subject === filter);
-  const submitNote = (event) => {
+  const submitNote = async (event) => {
     event.preventDefault();
+    setUploadStatus('');
+    setIsUploading(true);
     const form = new FormData(event.currentTarget);
-    const payload = { title: form.get('title'), subject: form.get('subject'), type: form.get('type') };
-    if (editing) {
-      updateNote(editing.id, payload);
-      setEditing(null);
-    } else {
-      addNote(payload);
+    const file = form.get('file');
+    const selectedFile = file instanceof File && file.size > 0 ? file : null;
+
+    try {
+      const uploaded = selectedFile ? await uploadStudyFile(selectedFile) : null;
+      const payload = {
+        title: form.get('title') || uploaded?.fileName || 'Nuevo apunte',
+        subject: form.get('subject'),
+        type: uploaded?.fileType || form.get('type'),
+        size: uploaded?.fileSize || editing?.size || 'Manual',
+        fileName: uploaded?.fileName || editing?.fileName || null,
+        filePath: uploaded?.filePath || editing?.filePath || null,
+        storage: uploaded?.storage || editing?.storage || 'manual'
+      };
+
+      if (editing) {
+        updateNote(editing.id, payload);
+        setEditing(null);
+        setUploadStatus(selectedFile ? 'Apunte actualizado y archivo cargado.' : 'Apunte actualizado.');
+      } else {
+        addNote(payload);
+        setUploadStatus(uploaded?.storage === 'supabase' ? 'Archivo subido a Supabase.' : selectedFile ? 'Archivo guardado como metadata local.' : 'Apunte creado.');
+      }
+      event.currentTarget.reset();
+    } catch (error) {
+      setUploadStatus(error.message || 'No se pudo subir el archivo.');
+    } finally {
+      setIsUploading(false);
     }
-    event.currentTarget.reset();
   };
-  return <section className="view active"><div className="content-grid"><div><div className="section-toolbar"><div className="tabs"><button className={filter === 'Todos' ? 'active' : ''} onClick={() => setFilter('Todos')}>Todos</button>{data.subjects.map((subject) => <button className={filter === subject.name ? 'active' : ''} key={subject.id} onClick={() => setFilter(subject.name)}>{subject.name}</button>)}</div><div className="toolbar-actions"><button className="icon-button" aria-label="Buscar"><Search size={20} /></button><button className="primary-button"><Upload size={18} />Subir apunte</button></div></div><div className="panel document-list">{visible.map((note) => <NoteRow note={note} key={note.id} onEdit={() => setEditing(note)} onDelete={() => window.confirm('Borrar este apunte?') && deleteNote(note.id)} />)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar apunte' : 'Nuevo apunte'} editing={Boolean(editing)} onCancel={() => setEditing(null)} onSubmit={submitNote}><input name="title" required placeholder="Titulo del apunte" defaultValue={editing?.title || ''} key={`title-${editing?.id || 'new'}`} /><select name="subject" defaultValue={editing?.subject || data.subjects[0]?.name} key={`subject-${editing?.id || 'new'}`}>{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><select name="type" defaultValue={editing?.type || 'PDF'} key={`type-${editing?.id || 'new'}`}><option>PDF</option><option>DOC</option><option>LINK</option></select></QuickForm></div></div></section>;
+  return <section className="view active"><div className="content-grid"><div><div className="section-toolbar"><div className="tabs"><button className={filter === 'Todos' ? 'active' : ''} onClick={() => setFilter('Todos')}>Todos</button>{data.subjects.map((subject) => <button className={filter === subject.name ? 'active' : ''} key={subject.id} onClick={() => setFilter(subject.name)}>{subject.name}</button>)}</div><div className="toolbar-actions"><button className="icon-button" aria-label="Buscar"><Search size={20} /></button><button className="primary-button" type="button" onClick={() => document.getElementById('study-file-input')?.click()}><Upload size={18} />Subir apunte</button></div></div><div className="panel document-list">{visible.map((note) => <NoteRow note={note} key={note.id} onEdit={() => setEditing(note)} onDelete={() => window.confirm('Borrar este apunte?') && deleteNote(note.id)} />)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar apunte' : 'Nuevo apunte'} editing={Boolean(editing)} onCancel={() => { setEditing(null); setUploadStatus(''); }} onSubmit={submitNote} submitting={isUploading} submitLabel="Subiendo..."><input name="title" placeholder="Titulo del apunte" defaultValue={editing?.title || ''} key={`title-${editing?.id || 'new'}`} /><select name="subject" defaultValue={editing?.subject || data.subjects[0]?.name} key={`subject-${editing?.id || 'new'}`}>{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><select name="type" defaultValue={editing?.type || 'PDF'} key={`type-${editing?.id || 'new'}`}><option>PDF</option><option>DOC</option><option>LINK</option></select><label className="file-upload-box" htmlFor="study-file-input"><Upload size={19} /><span>Seleccionar PDF, DOC o DOCX</span><small>{editing?.fileName || 'Si Supabase esta activo, se sube al bucket study-files.'}</small></label><input id="study-file-input" className="file-input" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />{uploadStatus ? <p className="upload-status">{uploadStatus}</p> : null}</QuickForm></div></div></section>;
 }
 
 function PomodoroView({ data, timer, running, toggleTimer, resetTimer, addSession, updateSession, deleteSession }) {
