@@ -344,9 +344,10 @@ function NotesView({ data, addNote, updateNote, deleteNote }) {
     event.preventDefault();
     if (submitLock.current) return;
     submitLock.current = true;
+    const formElement = event.currentTarget;
     setUploadStatus('');
     setIsUploading(true);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const file = form.get('file');
     const selectedFile = file instanceof File && file.size > 0 ? file : null;
 
@@ -370,7 +371,7 @@ function NotesView({ data, addNote, updateNote, deleteNote }) {
         addNote(payload);
         setUploadStatus(uploaded?.storage === 'supabase' ? 'Archivo subido a Supabase.' : selectedFile ? 'Archivo guardado como metadata local.' : 'Apunte creado.');
       }
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error) {
       setUploadStatus(error.message || 'No se pudo subir el archivo.');
     } finally {
