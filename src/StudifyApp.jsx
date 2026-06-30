@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Clock3,
-  FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, Menu, Moon, MoreHorizontal,
-  Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target, TimerReset,
-  Trash2, Trophy, Upload, User, X
+  FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, ListChecks, Menu, Moon,
+  MoreHorizontal, Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target,
+  TimerReset, Trash2, Trophy, Upload, User, X
 } from 'lucide-react';
 
 const seed = {
@@ -31,6 +31,7 @@ const seed = {
 
 const pages = {
   home: ['Hola, Usuario', 'La disciplina de hoy es el exito de manana.'],
+  plan: ['Plan de Hoy', 'Una guia concreta para avanzar sin perder foco.'],
   notes: ['Mis Apuntes', 'Carga materiales y organizalos por materia.'],
   stats: ['Estadisticas', 'Mira como avanza tu estudio esta semana.'],
   pomodoro: ['Pomodoro', 'Enfocate por bloques y registra tus sesiones.'],
@@ -41,9 +42,9 @@ const pages = {
 };
 
 const nav = [
-  ['home', 'Inicio', Home], ['notes', 'Mis Apuntes', FileText], ['stats', 'Estadisticas', BarChart3],
-  ['pomodoro', 'Pomodoro', Clock3], ['techniques', 'Tecnicas', Lightbulb], ['assistant', 'IA Asistente', Sparkles],
-  ['calendar', 'Examenes', CalendarDays], ['profile', 'Perfil', User]
+  ['home', 'Inicio', Home], ['plan', 'Plan de Hoy', ListChecks], ['notes', 'Mis Apuntes', FileText],
+  ['stats', 'Estadisticas', BarChart3], ['pomodoro', 'Pomodoro', Clock3], ['techniques', 'Tecnicas', Lightbulb],
+  ['assistant', 'IA Asistente', Sparkles], ['calendar', 'Examenes', CalendarDays], ['profile', 'Perfil', User]
 ];
 
 const techniques = [
@@ -68,6 +69,21 @@ function readData() {
   } catch {
     return seed;
   }
+}
+
+function buildDailyPlan(data) {
+  const exams = [...data.exams].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const exam = exams.find((item) => item.topics.some((topic) => !item.completedTopics.includes(topic))) || exams[0];
+  if (!exam) return null;
+  const pendingTopics = exam.topics.filter((topic) => !exam.completedTopics.includes(topic));
+  const topic = pendingTopics[0] || exam.topics[0] || 'Repaso general';
+  const remainingHours = Math.max(exam.estimatedHours - exam.completedTopics.length * 2, 1);
+  const days = Math.max(daysUntil(exam.date), 1);
+  const dailyHours = Math.max(0.5, Math.round((remainingHours / days) * 10) / 10);
+  const intensity = days <= 2 ? 'Alta prioridad' : days <= 7 ? 'Prioridad media' : 'Ritmo estable';
+  const technique = days <= 3 ? 'Active recall' : pendingTopics.length > 1 ? 'Pomodoro' : 'Tecnica Feynman';
+  const task = `Estudiar ${topic} durante ${dailyHours} h y cerrar con 10 minutos de repaso activo.`;
+  return { exam, topic, dailyHours, remainingHours, days, intensity, technique, task, pendingTopics };
 }
 
 function IconButton({ label, children, onClick }) {
@@ -144,6 +160,18 @@ function QuickForm({ title, children, onSubmit, editing, onCancel }) {
   return <form className="quick-form" onSubmit={onSubmit}><div className="form-heading"><h3>{title}</h3>{editing ? <button type="button" className="link-button" onClick={onCancel}>Cancelar</button> : null}</div>{children}<button className="primary-button" type="submit">{editing ? <Pencil size={17} /> : <Plus size={17} />}{editing ? 'Guardar cambios' : 'Guardar'}</button></form>;
 }
 
+function PlanPanel({ plan, changeView, compact = false }) {
+  if (!plan) return <section className="panel plan-panel"><h2>Plan de Hoy</h2><p>Agrega un examen para generar una guia diaria.</p><button className="primary-button" onClick={() => changeView('calendar')}><Plus size={18} />Crear examen</button></section>;
+  return <section className={`panel plan-panel ${compact ? 'compact' : ''}`}>
+    <div className="panel-heading"><h2>Plan de Hoy</h2><span className="status-pill">{plan.intensity}</span></div>
+    <div className="plan-hero"><div><span>Objetivo principal</span><strong>{plan.topic}</strong><p>{plan.exam.subject} · {plan.exam.title}</p></div><Target size={34} /></div>
+    <div className="plan-grid"><div><small>Tiempo sugerido</small><strong>{plan.dailyHours} h</strong></div><div><small>Tecnica</small><strong>{plan.technique}</strong></div><div><small>Examen</small><strong>{plan.days} dias</strong></div></div>
+    <p className="study-tip">{plan.task}</p>
+    {!compact ? <ul className="topic-list">{plan.pendingTopics.slice(0, 4).map((topic) => <li key={topic}><label><input type="checkbox" readOnly />{topic}</label></li>)}</ul> : null}
+    <button className="secondary-button wide" onClick={() => changeView('pomodoro')}><Play size={18} />Empezar bloque</button>
+  </section>;
+}
+
 function ExamFocus({ exam, toggleTopic }) {
   if (!exam) return <section className="panel focus-panel"><h2>No hay examenes cargados</h2><p>Agrega un examen para ver una recomendacion diaria.</p></section>;
   const progress = Math.round((exam.completedTopics.length / Math.max(exam.topics.length, 1)) * 100);
@@ -169,9 +197,13 @@ function HomeView({ data, summary, timer, running, toggleTimer, changeView, togg
   return <section className="view active">
     <div className="today-card"><div><span>Horas de estudio esta semana</span><strong>{summary.hours} h</strong><button onClick={() => changeView('stats')}>Ver estadisticas <ChevronRight size={15} /></button></div><Clock3 size={34} /></div>
     <div className="metrics-grid"><Metric icon={Clock3} tone="purple" label="Horas de estudio" value={`${summary.hours} h`} detail="guardadas en este dispositivo" /><Metric icon={Target} tone="green" label="Sesiones completadas" value={summary.sessions} detail="registros de estudio" /><Metric icon={Flame} tone="orange" label="Racha actual" value={`${summary.streak} dias`} detail="sigue asi" /><Metric icon={FolderOpen} tone="blue" label="Apuntes guardados" value={data.notes.length} detail="documentos" /></div>
-    <div className="dashboard-grid"><section className="panel notes-panel"><div className="panel-heading"><h2>Mis Apuntes Recientes</h2><button className="link-button" onClick={() => changeView('notes')}>Ver todos</button></div><div className="document-list compact">{data.notes.slice(0, 4).map((note) => <NoteRow note={note} key={note.id} />)}</div></section><section className="panel timer-panel"><h2>Pomodoro</h2><TimerRing seconds={timer} /><button className="primary-button wide" onClick={toggleTimer}>{running ? <Pause size={18} /> : <Play size={18} />}{running ? 'Pausar' : 'Iniciar'}</button><button className="secondary-button wide" onClick={() => changeView('pomodoro')}><TimerReset size={18} />Sesiones</button></section><section className="side-stack"><ExamFocus exam={summary.nextExam} toggleTopic={toggleTopic} /><article className="panel technique-card"><span className="metric-icon green"><Lightbulb size={28} /></span><div><h2>Tecnica recomendada</h2><strong>Pomodoro</strong><p>Ideal para mantener el enfoque y mejorar tu productividad.</p><button className="secondary-button" onClick={() => changeView('techniques')}>Ver mas tecnicas</button></div></article></section></div>
+    <div className="dashboard-grid"><section className="panel notes-panel"><div className="panel-heading"><h2>Mis Apuntes Recientes</h2><button className="link-button" onClick={() => changeView('notes')}>Ver todos</button></div><div className="document-list compact">{data.notes.slice(0, 4).map((note) => <NoteRow note={note} key={note.id} />)}</div></section><section className="panel timer-panel"><h2>Pomodoro</h2><TimerRing seconds={timer} /><button className="primary-button wide" onClick={toggleTimer}>{running ? <Pause size={18} /> : <Play size={18} />}{running ? 'Pausar' : 'Iniciar'}</button><button className="secondary-button wide" onClick={() => changeView('pomodoro')}><TimerReset size={18} />Sesiones</button></section><section className="side-stack"><PlanPanel plan={summary.dailyPlan} changeView={changeView} compact /><ExamFocus exam={summary.nextExam} toggleTopic={toggleTopic} /></section></div>
     <AssistantStrip />
   </section>;
+}
+
+function PlanView({ summary, changeView }) {
+  return <section className="view active"><div className="content-grid"><PlanPanel plan={summary.dailyPlan} changeView={changeView} /><section className="panel"><h2>Como se calcula</h2><div className="explain-list"><p><strong>Urgencia:</strong> toma el examen mas cercano con temas pendientes.</p><p><strong>Tiempo:</strong> reparte las horas restantes entre los dias disponibles.</p><p><strong>Tecnica:</strong> cambia segun cercania y cantidad de temas pendientes.</p></div><button className="secondary-button wide" onClick={() => changeView('calendar')}><CalendarDays size={18} />Ver examenes</button></section></div></section>;
 }
 
 function NotesView({ data, addNote, updateNote, deleteNote }) {
@@ -263,6 +295,7 @@ export default function StudifyApp() {
       totals[day === 0 ? 6 : day - 1] += session.minutes / 60;
     });
     const max = Math.max(...totals, 1);
+    const nextExam = [...data.exams].sort((a, b) => new Date(a.date) - new Date(b.date))[0];
     return {
       hours: Math.round((totalMinutes / 60) * 10) / 10,
       totalHours: Math.round((totalMinutes / 60) * 10) / 10,
@@ -270,12 +303,13 @@ export default function StudifyApp() {
       streak: Math.min(7, new Set(data.sessions.map((item) => item.date)).size),
       subjectHours,
       bars: totals.map((value) => Math.max(6, Math.round((value / max) * 92))),
-      nextExam: [...data.exams].sort((a, b) => new Date(a.date) - new Date(b.date))[0]
+      nextExam,
+      dailyPlan: buildDailyPlan(data)
     };
   }, [data]);
 
   const changeView = (view) => { setActive(view); setMenuOpen(false); };
   const resetTimer = () => { setRunning(false); setTimer(1500); };
 
-  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'pomodoro', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
+  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
 }
