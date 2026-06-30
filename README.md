@@ -8,11 +8,11 @@ El proyecto esta armado como una app React con Vite. Esta version ya funciona co
 
 - Dashboard con resumen semanal, racha, sesiones y apuntes guardados.
 - Materias editables desde el perfil.
-- Apuntes creados por el usuario y filtrados por materia.
+- Apuntes creados, editados, borrados y filtrados por materia.
 - Pomodoro interactivo con registro de sesiones de estudio.
 - Estadisticas calculadas desde las sesiones guardadas.
-- Examen cercano con temas pendientes, progreso y horas estimadas.
-- Creacion de examenes con fecha, materia y lista de temas.
+- Examen cercano con temas pendientes, progreso, horas estimadas y recomendacion diaria.
+- Creacion, edicion y eliminacion de examenes con fecha, materia y lista de temas.
 - Tecnicas de estudio recomendadas.
 - Vista inicial de asistente IA para resumir, explicar y crear preguntas.
 - Persistencia en el navegador mediante `localStorage`.
@@ -47,8 +47,8 @@ https://brunobusnelli.github.io/Studify/
 
 ## Proximos pasos sugeridos
 
-1. Separar componentes por carpeta cuando crezca la app.
-2. Agregar edicion y eliminacion de materias, apuntes y examenes.
+1. Agregar edicion y eliminacion de materias y sesiones.
+2. Separar componentes por carpeta cuando crezca la app.
 3. Agregar autenticacion de usuarios.
 4. Guardar materias, apuntes, sesiones y examenes en una base de datos.
 5. Integrar carga real de PDFs y resumen con IA.
