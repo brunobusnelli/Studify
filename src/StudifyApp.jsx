@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Clock3,
   FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, Menu, Moon, MoreHorizontal,
-  Pause, Play, Plus, RotateCcw, Search, Send, Sparkles, Target, TimerReset, Trophy,
-  Upload, User, X
+  Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target, TimerReset,
+  Trash2, Trophy, Upload, User, X
 } from 'lucide-react';
 
 const seed = {
@@ -59,6 +59,8 @@ const id = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).sli
 const formatTime = (value) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
 const formatDate = (value) => new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
 const daysUntil = (value) => Math.max(0, Math.ceil((new Date(`${value}T00:00:00`) - new Date(`${today()}T00:00:00`)) / 86400000));
+const topicsToText = (topics) => topics.join(', ');
+const textToTopics = (value) => String(value).split(',').map((item) => item.trim()).filter(Boolean);
 
 function readData() {
   try {
@@ -79,8 +81,12 @@ function useStudyData() {
   return {
     data,
     addNote: (note) => setData((current) => ({ ...current, notes: [{ id: id('note'), date: today(), size: 'Manual', ...note }, ...current.notes] })),
+    updateNote: (noteId, patch) => setData((current) => ({ ...current, notes: current.notes.map((note) => note.id === noteId ? { ...note, ...patch } : note) })),
+    deleteNote: (noteId) => setData((current) => ({ ...current, notes: current.notes.filter((note) => note.id !== noteId) })),
     addSubject: (subject) => setData((current) => ({ ...current, subjects: [{ id: id('subject'), ...subject }, ...current.subjects] })),
     addExam: (exam) => setData((current) => ({ ...current, exams: [{ id: id('exam'), completedTopics: [], ...exam }, ...current.exams] })),
+    updateExam: (examId, patch) => setData((current) => ({ ...current, exams: current.exams.map((exam) => exam.id === examId ? { ...exam, ...patch, completedTopics: exam.completedTopics.filter((topic) => patch.topics?.includes(topic) ?? true) } : exam) })),
+    deleteExam: (examId) => setData((current) => ({ ...current, exams: current.exams.filter((exam) => exam.id !== examId) })),
     addSession: (session) => setData((current) => ({ ...current, sessions: [{ id: id('session'), date: today(), ...session }, ...current.sessions] })),
     toggleTopic: (examId, topic) => setData((current) => ({
       ...current,
@@ -117,8 +123,12 @@ function Metric({ icon: Icon, tone, label, value, detail }) {
   return <article className="metric-card"><span className={`metric-icon ${tone}`}><Icon size={28} /></span><div><p>{label}</p><strong>{value}</strong><small>{detail}</small></div></article>;
 }
 
-function NoteRow({ note }) {
-  return <article className="document-row"><span className={`file-icon ${note.type === 'DOC' ? 'doc' : ''}`}>{note.type}</span><div><strong>{note.title}</strong><small>{note.subject} · {formatDate(note.date)} · {note.size}</small></div><button aria-label="Mas opciones"><MoreHorizontal size={20} /></button></article>;
+function RowActions({ onEdit, onDelete }) {
+  return <div className="row-actions"><button type="button" onClick={onEdit} aria-label="Editar"><Pencil size={17} /></button><button type="button" onClick={onDelete} aria-label="Borrar"><Trash2 size={17} /></button></div>;
+}
+
+function NoteRow({ note, onEdit, onDelete }) {
+  return <article className="document-row editable-row"><span className={`file-icon ${note.type === 'DOC' ? 'doc' : ''}`}>{note.type}</span><div><strong>{note.title}</strong><small>{note.subject} · {formatDate(note.date)} · {note.size}</small></div>{onEdit ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : <button aria-label="Mas opciones"><MoreHorizontal size={20} /></button>}</article>;
 }
 
 function BarChart({ bars, tall = false }) {
@@ -130,19 +140,21 @@ function TimerRing({ seconds, large }) {
   return <div className={`timer-ring ${large ? 'large' : ''}`} style={{ '--progress': progress }}><span>{formatTime(seconds)}</span><small>Tiempo de estudio</small></div>;
 }
 
-function QuickForm({ title, children, onSubmit }) {
-  return <form className="quick-form" onSubmit={onSubmit}><h3>{title}</h3>{children}<button className="primary-button" type="submit"><Plus size={17} />Guardar</button></form>;
+function QuickForm({ title, children, onSubmit, editing, onCancel }) {
+  return <form className="quick-form" onSubmit={onSubmit}><div className="form-heading"><h3>{title}</h3>{editing ? <button type="button" className="link-button" onClick={onCancel}>Cancelar</button> : null}</div>{children}<button className="primary-button" type="submit">{editing ? <Pencil size={17} /> : <Plus size={17} />}{editing ? 'Guardar cambios' : 'Guardar'}</button></form>;
 }
 
 function ExamFocus({ exam, toggleTopic }) {
   if (!exam) return <section className="panel focus-panel"><h2>No hay examenes cargados</h2><p>Agrega un examen para ver una recomendacion diaria.</p></section>;
   const progress = Math.round((exam.completedTopics.length / Math.max(exam.topics.length, 1)) * 100);
   const remaining = Math.max(exam.estimatedHours - exam.completedTopics.length * 2, 1);
+  const daily = Math.max(0.5, Math.round((remaining / Math.max(daysUntil(exam.date), 1)) * 10) / 10);
   return <section className="panel focus-panel">
     <div className="panel-heading"><h2>Examen cercano</h2><span className="status-pill">Faltan {daysUntil(exam.date)} dias</span></div>
     <strong>{exam.title}</strong><p>{exam.subject} · {formatDate(exam.date)}</p>
     <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
     <small>{progress}% preparado · quedan aprox. {remaining} h</small>
+    <p className="study-tip">Recomendacion: estudia {daily} h por dia para llegar con aire.</p>
     <h3>Que estudiar hoy</h3>
     <ul className="topic-list">{exam.topics.map((topic) => <li key={topic}><label><input type="checkbox" checked={exam.completedTopics.includes(topic)} onChange={() => toggleTopic(exam.id, topic)} />{topic}</label></li>)}</ul>
   </section>;
@@ -162,10 +174,23 @@ function HomeView({ data, summary, timer, running, toggleTimer, changeView, togg
   </section>;
 }
 
-function NotesView({ data, addNote }) {
+function NotesView({ data, addNote, updateNote, deleteNote }) {
   const [filter, setFilter] = useState('Todos');
+  const [editing, setEditing] = useState(null);
   const visible = filter === 'Todos' ? data.notes : data.notes.filter((note) => note.subject === filter);
-  return <section className="view active"><div className="content-grid"><div><div className="section-toolbar"><div className="tabs"><button className={filter === 'Todos' ? 'active' : ''} onClick={() => setFilter('Todos')}>Todos</button>{data.subjects.map((subject) => <button className={filter === subject.name ? 'active' : ''} key={subject.id} onClick={() => setFilter(subject.name)}>{subject.name}</button>)}</div><div className="toolbar-actions"><button className="icon-button" aria-label="Buscar"><Search size={20} /></button><button className="primary-button"><Upload size={18} />Subir apunte</button></div></div><div className="panel document-list">{visible.map((note) => <NoteRow note={note} key={note.id} />)}</div></div><div className="panel"><QuickForm title="Nuevo apunte" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); addNote({ title: form.get('title'), subject: form.get('subject'), type: form.get('type') }); event.currentTarget.reset(); }}><input name="title" required placeholder="Titulo del apunte" /><select name="subject">{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><select name="type"><option>PDF</option><option>DOC</option><option>LINK</option></select></QuickForm></div></div></section>;
+  const submitNote = (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const payload = { title: form.get('title'), subject: form.get('subject'), type: form.get('type') };
+    if (editing) {
+      updateNote(editing.id, payload);
+      setEditing(null);
+    } else {
+      addNote(payload);
+    }
+    event.currentTarget.reset();
+  };
+  return <section className="view active"><div className="content-grid"><div><div className="section-toolbar"><div className="tabs"><button className={filter === 'Todos' ? 'active' : ''} onClick={() => setFilter('Todos')}>Todos</button>{data.subjects.map((subject) => <button className={filter === subject.name ? 'active' : ''} key={subject.id} onClick={() => setFilter(subject.name)}>{subject.name}</button>)}</div><div className="toolbar-actions"><button className="icon-button" aria-label="Buscar"><Search size={20} /></button><button className="primary-button"><Upload size={18} />Subir apunte</button></div></div><div className="panel document-list">{visible.map((note) => <NoteRow note={note} key={note.id} onEdit={() => setEditing(note)} onDelete={() => window.confirm('Borrar este apunte?') && deleteNote(note.id)} />)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar apunte' : 'Nuevo apunte'} editing={Boolean(editing)} onCancel={() => setEditing(null)} onSubmit={submitNote}><input name="title" required placeholder="Titulo del apunte" defaultValue={editing?.title || ''} key={`title-${editing?.id || 'new'}`} /><select name="subject" defaultValue={editing?.subject || data.subjects[0]?.name} key={`subject-${editing?.id || 'new'}`}>{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><select name="type" defaultValue={editing?.type || 'PDF'} key={`type-${editing?.id || 'new'}`}><option>PDF</option><option>DOC</option><option>LINK</option></select></QuickForm></div></div></section>;
 }
 
 function PomodoroView({ data, timer, running, toggleTimer, resetTimer, addSession }) {
@@ -181,9 +206,22 @@ function AssistantView({ data }) {
   return <section className="view active"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>En que puedo ayudarte hoy?</h2><div className="ai-actions"><button><div><strong>Resumir este PDF</strong><span>{data.notes.length} apuntes disponibles para conectar luego.</span></div><FileText size={22} /></button><button><div><strong>Explicarme un tema</strong><span>El asistente puede preparar explicaciones por materia.</span></div><Brain size={22} /></button><button><div><strong>Crear preguntas</strong><span>Genera preguntas de practica sobre tus temas.</span></div><BookOpen size={22} /></button></div><AssistantStrip /></div></section>;
 }
 
-function CalendarView({ data, addExam, toggleTopic }) {
+function CalendarView({ data, addExam, updateExam, deleteExam, toggleTopic }) {
+  const [editing, setEditing] = useState(null);
   const nextExam = [...data.exams].sort((a, b) => new Date(a.date) - new Date(b.date))[0];
-  return <section className="view active"><div className="content-grid"><div><ExamFocus exam={nextExam} toggleTopic={toggleTopic} /><div className="panel exam-list"><h2>Todos los examenes</h2>{data.exams.map((exam) => <article className="exam-card" key={exam.id}><div><strong>{exam.title}</strong><small>{exam.subject} · {formatDate(exam.date)} · faltan {daysUntil(exam.date)} dias</small></div><span>{Math.round((exam.completedTopics.length / Math.max(exam.topics.length, 1)) * 100)}%</span></article>)}</div></div><div className="panel"><QuickForm title="Nuevo examen" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); addExam({ title: form.get('title'), subject: form.get('subject'), date: form.get('date'), estimatedHours: Number(form.get('estimatedHours') || 5), topics: String(form.get('topics')).split(',').map((item) => item.trim()).filter(Boolean) }); event.currentTarget.reset(); }}><input name="title" required placeholder="Nombre del examen" /><select name="subject">{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><input name="date" required type="date" /><input name="estimatedHours" min="1" type="number" placeholder="Horas estimadas" /><textarea name="topics" required placeholder="Temas separados por coma" /></QuickForm></div></div></section>;
+  const submitExam = (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const payload = { title: form.get('title'), subject: form.get('subject'), date: form.get('date'), estimatedHours: Number(form.get('estimatedHours') || 5), topics: textToTopics(form.get('topics')) };
+    if (editing) {
+      updateExam(editing.id, payload);
+      setEditing(null);
+    } else {
+      addExam(payload);
+    }
+    event.currentTarget.reset();
+  };
+  return <section className="view active"><div className="content-grid"><div><ExamFocus exam={nextExam} toggleTopic={toggleTopic} /><div className="panel exam-list"><h2>Todos los examenes</h2>{data.exams.map((exam) => <article className="exam-card" key={exam.id}><div><strong>{exam.title}</strong><small>{exam.subject} · {formatDate(exam.date)} · faltan {daysUntil(exam.date)} dias</small></div><span>{Math.round((exam.completedTopics.length / Math.max(exam.topics.length, 1)) * 100)}%</span><RowActions onEdit={() => setEditing(exam)} onDelete={() => window.confirm('Borrar este examen?') && deleteExam(exam.id)} /></article>)}</div></div><div className="panel"><QuickForm title={editing ? 'Editar examen' : 'Nuevo examen'} editing={Boolean(editing)} onCancel={() => setEditing(null)} onSubmit={submitExam}><input name="title" required placeholder="Nombre del examen" defaultValue={editing?.title || ''} key={`exam-title-${editing?.id || 'new'}`} /><select name="subject" defaultValue={editing?.subject || data.subjects[0]?.name} key={`exam-subject-${editing?.id || 'new'}`}>{data.subjects.map((subject) => <option key={subject.id}>{subject.name}</option>)}</select><input name="date" required type="date" defaultValue={editing?.date || ''} key={`exam-date-${editing?.id || 'new'}`} /><input name="estimatedHours" min="1" type="number" placeholder="Horas estimadas" defaultValue={editing?.estimatedHours || ''} key={`exam-hours-${editing?.id || 'new'}`} /><textarea name="topics" required placeholder="Temas separados por coma" defaultValue={editing ? topicsToText(editing.topics) : ''} key={`exam-topics-${editing?.id || 'new'}`} /></QuickForm></div></div></section>;
 }
 
 function TechniquesView() {
@@ -195,7 +233,7 @@ function ProfileView({ data, addSubject, summary }) {
 }
 
 export default function StudifyApp() {
-  const { data, addNote, addSubject, addExam, addSession, toggleTopic } = useStudyData();
+  const { data, addNote, updateNote, deleteNote, addSubject, addExam, updateExam, deleteExam, addSession, toggleTopic } = useStudyData();
   const [active, setActive] = useState('home');
   const [menuOpen, setMenuOpen] = useState(false);
   const [timer, setTimer] = useState(1500);
@@ -239,5 +277,5 @@ export default function StudifyApp() {
   const changeView = (view) => { setActive(view); setMenuOpen(false); };
   const resetTimer = () => { setRunning(false); setTimer(1500); };
 
-  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'notes' && <NotesView data={data} addNote={addNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'pomodoro', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
+  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} summary={summary} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'pomodoro', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
 }
