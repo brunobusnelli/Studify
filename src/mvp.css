@@ -10,6 +10,13 @@
   gap: 12px;
 }
 
+.form-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 .quick-form h3 {
   margin: 0 0 4px;
   font-size: 17px;
@@ -41,6 +48,39 @@
   box-shadow: 0 0 0 4px rgba(91, 87, 232, 0.1);
 }
 
+.editable-row {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+}
+
+.row-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.row-actions button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #60657c;
+  background: #f8f8fc;
+  border: 1px solid var(--line);
+}
+
+.row-actions button:hover {
+  color: var(--primary);
+  border-color: rgba(91, 87, 232, 0.32);
+  background: #f0efff;
+}
+
+.row-actions button:last-child:hover {
+  color: #d84444;
+  border-color: rgba(216, 68, 68, 0.25);
+  background: #fff2f2;
+}
+
 .focus-panel {
   display: grid;
   gap: 12px;
@@ -52,6 +92,14 @@
 
 .focus-panel p {
   color: var(--muted);
+}
+
+.study-tip {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8f8ff;
+  color: var(--ink) !important;
+  font-weight: 700;
 }
 
 .status-pill {
@@ -116,7 +164,7 @@
 
 .exam-card {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 14px;
   min-height: 72px;
@@ -171,6 +219,19 @@
   .quick-form select,
   .quick-form textarea {
     font-size: 16px;
+  }
+
+  .editable-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+
+  .row-actions {
+    gap: 4px;
+  }
+
+  .row-actions button {
+    width: 30px;
+    height: 30px;
   }
 
   .exam-card {
