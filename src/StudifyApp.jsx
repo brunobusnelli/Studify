@@ -78,6 +78,21 @@ const formatDate = (value) => new Intl.DateTimeFormat('es-AR', { day: '2-digit',
 const daysUntil = (value) => Math.max(0, Math.ceil((new Date(`${value}T00:00:00`) - new Date(`${today()}T00:00:00`)) / 86400000));
 const topicsToText = (topics) => topics.join(', ');
 const textToTopics = (value) => String(value).split(',').map((item) => item.trim()).filter(Boolean);
+const cleanAssistantText = (value) => String(value)
+  .replace(/```[a-zA-Z]*\s*/g, '')
+  .replace(/```/g, '')
+  .split('\n')
+  .map((line) => line.trimEnd())
+  .filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    if (/^-{3,}$/.test(trimmed)) return false;
+    if (/^\);$/.test(trimmed)) return false;
+    return true;
+  })
+  .join('\n')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
 
 function readData() {
   try {
@@ -489,15 +504,15 @@ function AssistantView({ data }) {
     setAnswer('');
     try {
       const result = await askStudyAssistant({ noteId: selectedNoteId, mode, question });
-      setAnswer(result.answer || 'Gemini respondio sin texto.');
+      setAnswer(cleanAssistantText(result.answer || 'Gemini respondio sin texto.'));
       setAssistantStatus({ state: 'ready', message: 'Respuesta generada con Gemini.' });
     } catch (error) {
       setAssistantStatus({ state: 'error', message: error.message || 'No se pudo consultar Gemini.' });
     }
   };
-  const outputLines = answer ? answer.split('\n').filter((line) => line.trim()) : suggestions[mode];
+  const outputText = answer || suggestions[mode].join('\n\n');
   const statusLabel = assistantStatus.state === 'loading' ? 'Gemini' : assistantStatus.state === 'ready' ? 'Listo' : assistantStatus.state === 'error' ? 'Error' : 'Borrador';
-  return <section className="view active"><div className="assistant-workspace"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>IA Asistente</h2><p className="muted">Elegi un apunte y una accion para preparar tu estudio.</p><div className="ai-actions">{actionButtons.map(([key, Icon, title, body]) => <button type="button" className={mode === key ? 'active' : ''} key={key} onClick={() => setMode(key)}><div><strong>{title}</strong><span>{body}</span></div><Icon size={22} /></button>)}</div></div><div className="panel assistant-panel"><div className="panel-heading"><h2>{modeLabels[mode]}</h2><span className={`status-pill ${assistantStatus.state}`}>{statusLabel}</span></div>{data.notes.length ? <><label className="note-picker"><span>Apunte</span><select value={selectedNoteId} onChange={(event) => setSelectedNoteId(event.target.value)}>{data.notes.map((note) => <option key={note.id} value={note.id}>{note.title}</option>)}</select></label><form className="assistant-composer" onSubmit={submitAssistant}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una duda o tema puntual..." /><button type="submit" aria-label="Enviar" disabled={assistantStatus.state === 'loading'}><Send size={20} /></button></form>{assistantStatus.message ? <p className={`save-status ${assistantStatus.state}`}>{assistantStatus.message}</p> : null}<div className="assistant-output"><strong>{selectedNote?.title}</strong><small>{selectedNote?.subject} - {selectedNote?.type} - {selectedNote?.size}</small>{outputLines.map((item) => <p key={item}>{item}</p>)}</div></> : <p className="empty-state">Subi un apunte para empezar a trabajar con el asistente.</p>}</div></div></section>;
+  return <section className="view active"><div className="assistant-workspace"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>IA Asistente</h2><p className="muted">Elegi un apunte y una accion para preparar tu estudio.</p><div className="ai-actions">{actionButtons.map(([key, Icon, title, body]) => <button type="button" className={mode === key ? 'active' : ''} key={key} onClick={() => setMode(key)}><div><strong>{title}</strong><span>{body}</span></div><Icon size={22} /></button>)}</div></div><div className="panel assistant-panel"><div className="panel-heading"><h2>{modeLabels[mode]}</h2><span className={`status-pill ${assistantStatus.state}`}>{statusLabel}</span></div>{data.notes.length ? <><label className="note-picker"><span>Apunte</span><select value={selectedNoteId} onChange={(event) => setSelectedNoteId(event.target.value)}>{data.notes.map((note) => <option key={note.id} value={note.id}>{note.title}</option>)}</select></label><form className="assistant-composer" onSubmit={submitAssistant}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una duda o tema puntual..." /><button type="submit" aria-label="Enviar" disabled={assistantStatus.state === 'loading'}><Send size={20} /></button></form>{assistantStatus.message ? <p className={`save-status ${assistantStatus.state}`}>{assistantStatus.message}</p> : null}<div className="assistant-output"><strong>{selectedNote?.title}</strong><small>{selectedNote?.subject} - {selectedNote?.type} - {selectedNote?.size}</small><div className="assistant-answer">{outputText}</div></div></> : <p className="empty-state">Subi un apunte para empezar a trabajar con el asistente.</p>}</div></div></section>;
 }
 
 function CalendarView({ data, addExam, updateExam, deleteExam, toggleTopic }) {
