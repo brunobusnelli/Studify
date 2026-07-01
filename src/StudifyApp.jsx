@@ -12,7 +12,7 @@ import {
   loadRemoteStudyData, updateRemoteExam, updateRemoteNote, updateRemoteSession,
   updateRemoteSubject
 } from './lib/studyDataApi.js';
-import { askStudyAssistant } from './lib/studyAssistantApi.js';
+import { askStudyAssistant, loadAssistantResponses } from './lib/studyAssistantApi.js';
 import { deleteStudyFile, getStudyFileUrl, uploadStudyFile } from './lib/studyFiles.js';
 
 const seed = {
@@ -492,6 +492,8 @@ function AssistantView({ data }) {
   const [answer, setAnswer] = useState('');
   const [assistantStatus, setAssistantStatus] = useState({ state: 'idle', message: '' });
   const [copied, setCopied] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyStatus, setHistoryStatus] = useState('');
   useEffect(() => {
     if (!data.notes.length) {
       setSelectedNoteId('');
@@ -506,6 +508,21 @@ function AssistantView({ data }) {
     setAnswer('');
     setAssistantStatus({ state: 'idle', message: '' });
   }, [selectedNoteId, mode]);
+  useEffect(() => {
+    let active = true;
+    loadAssistantResponses()
+      .then((responses) => {
+        if (!active) return;
+        setHistory(responses);
+        setHistoryStatus('');
+      })
+      .catch((error) => {
+        if (!active) return;
+        setHistory([]);
+        setHistoryStatus(error.message || 'No se pudo cargar el historial.');
+      });
+    return () => { active = false; };
+  }, []);
   const modeLabels = {
     summary: 'Resumen',
     explain: 'Explicacion',
@@ -541,10 +558,22 @@ function AssistantView({ data }) {
       const result = await askStudyAssistant({ noteId: selectedNoteId, mode, question });
       setAnswer(cleanAssistantText(result.answer || 'Gemini respondio sin texto.'));
       setAssistantStatus({ state: result.warning ? 'warning' : 'ready', message: result.warning || 'Respuesta generada con Gemini.' });
+      if (result.savedId) {
+        setHistory((current) => [{
+          id: result.savedId,
+          noteId: selectedNoteId,
+          mode,
+          question,
+          answer: cleanAssistantText(result.answer || ''),
+          provider: result.source,
+          createdAt: result.savedAt
+        }, ...current.filter((item) => item.id !== result.savedId)].slice(0, 30));
+      }
     } catch (error) {
       setAssistantStatus({ state: 'error', message: error.message || 'No se pudo consultar Gemini.' });
     }
   };
+  const visibleHistory = history.filter((item) => item.noteId === selectedNoteId);
   const outputText = answer || suggestions[mode].join('\n\n');
   const statusLabel = assistantStatus.state === 'loading' ? 'Gemini' : assistantStatus.state === 'ready' ? 'Listo' : assistantStatus.state === 'error' ? 'Error' : 'Borrador';
   const copyAnswer = async () => {
@@ -552,7 +581,7 @@ function AssistantView({ data }) {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   };
-  return <section className="view active"><div className="assistant-workspace"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>IA Asistente</h2><p className="muted">Elegi un apunte y una accion para preparar tu estudio.</p><div className="ai-actions">{actionButtons.map(([key, Icon, title, body]) => <button type="button" className={mode === key ? 'active' : ''} key={key} onClick={() => setMode(key)}><div><strong>{title}</strong><span>{body}</span></div><Icon size={22} /></button>)}</div></div><div className="panel assistant-panel"><div className="panel-heading"><h2>{modeLabels[mode]}</h2><span className={`status-pill ${assistantStatus.state}`}>{statusLabel}</span></div>{data.notes.length ? <><label className="note-picker"><span>Apunte</span><select value={selectedNoteId} onChange={(event) => setSelectedNoteId(event.target.value)}>{data.notes.map((note) => <option key={note.id} value={note.id}>{note.title}</option>)}</select></label><form className="assistant-composer" onSubmit={submitAssistant}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una duda o tema puntual..." /><button type="submit" aria-label="Enviar" disabled={assistantStatus.state === 'loading'}><Send size={20} /></button></form>{assistantStatus.message ? <p className={`save-status ${assistantStatus.state}`}>{assistantStatus.message}</p> : null}<div className="assistant-output"><div className="assistant-output-head"><div><strong>{selectedNote?.title}</strong><small>{selectedNote?.subject} - {selectedNote?.type} - {selectedNote?.size}</small></div><button type="button" className="secondary-button compact" onClick={copyAnswer}><Copy size={16} />{copied ? 'Copiado' : 'Copiar'}</button></div><AssistantAnswer text={outputText} /></div></> : <p className="empty-state">Subi un apunte para empezar a trabajar con el asistente.</p>}</div></div></section>;
+  return <section className="view active"><div className="assistant-workspace"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>IA Asistente</h2><p className="muted">Elegi un apunte y una accion para preparar tu estudio.</p><div className="ai-actions">{actionButtons.map(([key, Icon, title, body]) => <button type="button" className={mode === key ? 'active' : ''} key={key} onClick={() => setMode(key)}><div><strong>{title}</strong><span>{body}</span></div><Icon size={22} /></button>)}</div><div className="assistant-history"><div className="panel-heading"><h2>Guardados</h2><span>{visibleHistory.length}</span></div>{historyStatus ? <p className="empty-state">{historyStatus}</p> : visibleHistory.length ? visibleHistory.slice(0, 6).map((item) => <button type="button" key={item.id} onClick={() => { setMode(item.mode); setQuestion(item.question || ''); setAnswer(cleanAssistantText(item.answer)); setAssistantStatus({ state: 'ready', message: 'Respuesta cargada del historial.' }); }}><strong>{modeLabels[item.mode] || 'Respuesta'}</strong><span>{new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(item.createdAt))}</span></button>) : <p className="empty-state">Todavia no hay respuestas guardadas para este apunte.</p>}</div></div><div className="panel assistant-panel"><div className="panel-heading"><h2>{modeLabels[mode]}</h2><span className={`status-pill ${assistantStatus.state}`}>{statusLabel}</span></div>{data.notes.length ? <><label className="note-picker"><span>Apunte</span><select value={selectedNoteId} onChange={(event) => setSelectedNoteId(event.target.value)}>{data.notes.map((note) => <option key={note.id} value={note.id}>{note.title}</option>)}</select></label><form className="assistant-composer" onSubmit={submitAssistant}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una duda o tema puntual..." /><button type="submit" aria-label="Enviar" disabled={assistantStatus.state === 'loading'}><Send size={20} /></button></form>{assistantStatus.message ? <p className={`save-status ${assistantStatus.state}`}>{assistantStatus.message}</p> : null}<div className="assistant-output"><div className="assistant-output-head"><div><strong>{selectedNote?.title}</strong><small>{selectedNote?.subject} - {selectedNote?.type} - {selectedNote?.size}</small></div><button type="button" className="secondary-button compact" onClick={copyAnswer}><Copy size={16} />{copied ? 'Copiado' : 'Copiar'}</button></div><AssistantAnswer text={outputText} /></div></> : <p className="empty-state">Subi un apunte para empezar a trabajar con el asistente.</p>}</div></div></section>;
 }
 
 function CalendarView({ data, addExam, updateExam, deleteExam, toggleTopic }) {
