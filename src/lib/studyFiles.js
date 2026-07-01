@@ -63,3 +63,9 @@ export async function getStudyFileUrl(filePath) {
   if (error) throw error;
   return data.signedUrl;
 }
+
+export async function deleteStudyFile(filePath) {
+  if (!filePath || !isSupabaseConfigured) return;
+  const { error } = await supabase.storage.from('study-files').remove([filePath]);
+  if (error) throw error;
+}

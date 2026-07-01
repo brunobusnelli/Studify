@@ -12,7 +12,7 @@ import {
   loadRemoteStudyData, updateRemoteExam, updateRemoteNote, updateRemoteSession,
   updateRemoteSubject
 } from './lib/studyDataApi.js';
-import { getStudyFileUrl, uploadStudyFile } from './lib/studyFiles.js';
+import { deleteStudyFile, getStudyFileUrl, uploadStudyFile } from './lib/studyFiles.js';
 
 const seed = {
   subjects: [
@@ -158,13 +158,23 @@ function useStudyData(user) {
       return { ...current, notes: [localNote, ...current.notes] };
     }),
     updateNote: (noteId, patch) => setData((current) => {
-      remote(() => updateRemoteNote(noteId, current.subjects, patch));
+      const original = current.notes.find((note) => note.id === noteId);
+      remote(async () => {
+        await updateRemoteNote(noteId, current.subjects, patch);
+        if (patch.filePath && original?.filePath && patch.filePath !== original.filePath) {
+          await deleteStudyFile(original.filePath);
+        }
+      });
       return { ...current, notes: current.notes.map((note) => note.id === noteId ? { ...note, ...patch } : note) };
     }),
-    deleteNote: (noteId) => {
-      setData((current) => ({ ...current, notes: current.notes.filter((note) => note.id !== noteId) }));
-      remote(() => deleteRemoteNote(noteId));
-    },
+    deleteNote: (noteId) => setData((current) => {
+      const note = current.notes.find((item) => item.id === noteId);
+      remote(async () => {
+        await deleteRemoteNote(noteId);
+        await deleteStudyFile(note?.filePath);
+      });
+      return { ...current, notes: current.notes.filter((item) => item.id !== noteId) };
+    }),
     addSubject: (subject) => setData((current) => {
       const localSubject = { id: id('subject'), ...subject };
       remote(async () => {
