@@ -1,4 +1,3 @@
-import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -47,7 +46,7 @@ function extractGeminiText(payload: any) {
   return payload.candidates?.[0]?.content?.parts?.map((part: any) => part.text).filter(Boolean).join('\n\n') || '';
 }
 
-serve(async (request) => {
+Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
