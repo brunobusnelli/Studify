@@ -435,7 +435,48 @@ function StatsView({ data, summary }) {
 }
 
 function AssistantView({ data }) {
-  return <section className="view active"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>En que puedo ayudarte hoy?</h2><div className="ai-actions"><button><div><strong>Resumir este PDF</strong><span>{data.notes.length} apuntes disponibles para conectar luego.</span></div><FileText size={22} /></button><button><div><strong>Explicarme un tema</strong><span>El asistente puede preparar explicaciones por materia.</span></div><Brain size={22} /></button><button><div><strong>Crear preguntas</strong><span>Genera preguntas de practica sobre tus temas.</span></div><BookOpen size={22} /></button></div><AssistantStrip /></div></section>;
+  const notesWithFiles = data.notes.filter((note) => note.filePath || note.fileName);
+  const [selectedNoteId, setSelectedNoteId] = useState(notesWithFiles[0]?.id || data.notes[0]?.id || '');
+  const [mode, setMode] = useState('summary');
+  const [question, setQuestion] = useState('');
+  useEffect(() => {
+    if (!data.notes.length) {
+      setSelectedNoteId('');
+      return;
+    }
+    if (!selectedNoteId || !data.notes.some((note) => note.id === selectedNoteId)) {
+      setSelectedNoteId(data.notes[0].id);
+    }
+  }, [data.notes, selectedNoteId]);
+  const selectedNote = data.notes.find((note) => note.id === selectedNoteId) || data.notes[0];
+  const modeLabels = {
+    summary: 'Resumen',
+    explain: 'Explicacion',
+    questions: 'Preguntas'
+  };
+  const suggestions = {
+    summary: [
+      `Idea central: ${selectedNote?.title || 'el apunte elegido'} pertenece a ${selectedNote?.subject || 'una materia'} y conviene repasarlo por bloques.`,
+      'Marcaria conceptos principales, definiciones y ejemplos antes de pasar a practica.',
+      'Para el siguiente paso, conviene extraer texto real del archivo y generar un resumen fiel.'
+    ],
+    explain: [
+      `Explicacion guia: toma ${selectedNote?.title || 'este tema'} como si tuvieras que contarlo con palabras simples.`,
+      'Primero identifica el concepto, despues un ejemplo y al final una duda que todavia tengas.',
+      question ? `Pregunta a responder: ${question}` : 'Podemos usar tu pregunta para orientar la explicacion.'
+    ],
+    questions: [
+      `1. Que conceptos principales aparecen en ${selectedNote?.title || 'este apunte'}?`,
+      '2. Como explicarias el tema sin mirar el material?',
+      '3. Que parte necesitarias repasar antes de un examen?'
+    ]
+  };
+  const actionButtons = [
+    ['summary', FileText, 'Resumir apunte', 'Arma un borrador ordenado para repasar.'],
+    ['explain', Brain, 'Explicarme un tema', 'Convierte el material en una explicacion simple.'],
+    ['questions', BookOpen, 'Crear preguntas', 'Prepara practica para active recall.']
+  ];
+  return <section className="view active"><div className="assistant-workspace"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>IA Asistente</h2><p className="muted">Elegi un apunte y una accion para preparar tu estudio.</p><div className="ai-actions">{actionButtons.map(([key, Icon, title, body]) => <button type="button" className={mode === key ? 'active' : ''} key={key} onClick={() => setMode(key)}><div><strong>{title}</strong><span>{body}</span></div><Icon size={22} /></button>)}</div></div><div className="panel assistant-panel"><div className="panel-heading"><h2>{modeLabels[mode]}</h2><span className="status-pill">Borrador</span></div>{data.notes.length ? <><label className="note-picker"><span>Apunte</span><select value={selectedNoteId} onChange={(event) => setSelectedNoteId(event.target.value)}>{data.notes.map((note) => <option key={note.id} value={note.id}>{note.title}</option>)}</select></label><form className="assistant-composer" onSubmit={(event) => { event.preventDefault(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una duda o tema puntual..." /><button type="submit" aria-label="Enviar"><Send size={20} /></button></form><div className="assistant-output"><strong>{selectedNote?.title}</strong><small>{selectedNote?.subject} - {selectedNote?.type} - {selectedNote?.size}</small>{suggestions[mode].map((item) => <p key={item}>{item}</p>)}</div></> : <p className="empty-state">Subi un apunte para empezar a trabajar con el asistente.</p>}</div></div></section>;
 }
 
 function CalendarView({ data, addExam, updateExam, deleteExam, toggleTopic }) {

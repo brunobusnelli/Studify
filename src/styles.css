@@ -116,12 +116,24 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
 .subject-list li { display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
 .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 8px; }
 .dot.green { background: var(--green); } .dot.purple { background: var(--primary); } .dot.orange { background: var(--orange); } .dot.blue { background: var(--blue); }
-.ai-panel { max-width: 620px; margin: 0 auto; text-align: center; }
+.assistant-workspace { display: grid; grid-template-columns: minmax(260px, .72fr) minmax(0, 1.28fr); gap: 18px; align-items: start; }
+.ai-panel { text-align: center; }
 .ai-panel .assistant-strip { text-align: left; margin-top: 10px; box-shadow: none; }
 .sparkle { width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; background: #f0efff; color: var(--primary); margin: 10px auto 18px; }
 .ai-actions { display: grid; gap: 12px; margin: 28px 0; text-align: left; }
 .ai-actions button { min-height: 82px; border-radius: 8px; background: #fbfbfe; border: 1px solid var(--line); padding: 18px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+.ai-actions button.active { border-color: #c9c6ff; background: #f3f2ff; color: var(--primary); }
 .ai-actions span { display: block; color: var(--muted); margin-top: 6px; }
+.assistant-panel { min-height: 480px; }
+.note-picker { display: grid; gap: 8px; margin-bottom: 14px; color: var(--muted); font-weight: 750; }
+.note-picker select { width: 100%; }
+.assistant-composer { display: grid; grid-template-columns: 1fr 56px; gap: 10px; margin-bottom: 16px; }
+.assistant-composer input { border: 1px solid var(--line); min-height: 46px; border-radius: 8px; padding: 0 14px; color: var(--ink); }
+.assistant-composer button { border-radius: 8px; background: var(--primary); color: #fff; display: grid; place-items: center; }
+.assistant-output { display: grid; gap: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 18px; background: #fbfbfe; }
+.assistant-output strong { font-size: 18px; }
+.assistant-output small { color: var(--muted); }
+.assistant-output p { line-height: 1.55; }
 .calendar-panel { max-width: 620px; margin: 0 auto; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 20px 0 26px; }
 .calendar-grid span { min-height: 42px; display: grid; place-items: center; border-radius: 50%; color: #4a4e66; }
@@ -174,6 +186,7 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
   .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-grid { grid-template-columns: 1fr; }
   .stats-layout { grid-template-columns: 1fr; }
+  .assistant-workspace { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 720px) {
