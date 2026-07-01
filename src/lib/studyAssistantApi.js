@@ -45,3 +45,16 @@ export async function loadAssistantResponses() {
     createdAt: item.created_at
   }));
 }
+
+export async function deleteAssistantResponse(responseId) {
+  if (!isSupabaseConfigured || !responseId) return;
+
+  const { error } = await supabase
+    .from('assistant_responses')
+    .delete()
+    .eq('id', responseId);
+
+  if (error) {
+    throw new Error(error.message || 'No se pudo borrar la respuesta guardada.');
+  }
+}

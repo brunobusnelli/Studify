@@ -127,10 +127,13 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
 .assistant-history { display: grid; gap: 10px; margin-top: 20px; text-align: left; }
 .assistant-history .panel-heading { margin-bottom: 2px; }
 .assistant-history .panel-heading span { color: var(--primary); font-weight: 800; }
-.assistant-history button { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 12px; text-align: left; display: grid; gap: 5px; }
-.assistant-history button:hover { border-color: #c9c6ff; background: #fbfbff; }
-.assistant-history button strong { font-size: 14px; }
-.assistant-history button span { color: var(--muted); font-size: 12px; }
+.history-item { border: 1px solid var(--line); border-radius: 8px; background: #fff; display: grid; grid-template-columns: 1fr 34px; align-items: center; gap: 4px; }
+.history-item:hover { border-color: #c9c6ff; background: #fbfbff; }
+.history-item > button:first-child { min-width: 0; padding: 12px; text-align: left; display: grid; gap: 5px; }
+.history-item button strong { font-size: 14px; }
+.history-item button span { color: var(--muted); font-size: 12px; }
+.history-delete { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; color: #d84444; }
+.history-delete:hover { background: #fff2f2; }
 .assistant-panel { min-height: 480px; }
 .note-picker { display: grid; gap: 8px; margin-bottom: 14px; color: var(--muted); font-weight: 750; }
 .note-picker select { width: 100%; }
