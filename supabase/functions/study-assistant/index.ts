@@ -133,11 +133,31 @@ Deno.serve(async (request) => {
       return jsonResponse({ error: geminiPayload.error?.message || 'Gemini no pudo generar la respuesta.' }, 502);
     }
 
+    const answer = extractGeminiText(geminiPayload);
+    const { data: savedResponse, error: saveError } = await supabase
+      .from('assistant_responses')
+      .insert({
+        user_id: userData.user.id,
+        note_id: note.id,
+        mode,
+        question: question || null,
+        answer,
+        provider: 'gemini'
+      })
+      .select('id,created_at')
+      .single();
+
+    if (saveError) {
+      return jsonResponse({ error: 'Gemini respondio, pero no se pudo guardar el resultado.' }, 500);
+    }
+
     return jsonResponse({
-      answer: extractGeminiText(geminiPayload),
+      answer,
       mode,
       noteTitle: note.title,
-      source: 'gemini'
+      source: 'gemini',
+      savedId: savedResponse.id,
+      savedAt: savedResponse.created_at
     });
   } catch (error) {
     return jsonResponse({ error: error.message || 'No se pudo completar la consulta.' }, 500);

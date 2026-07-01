@@ -44,20 +44,34 @@ create table if not exists public.study_sessions (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.assistant_responses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  note_id uuid references public.notes(id) on delete cascade not null,
+  mode text not null,
+  question text,
+  answer text not null,
+  provider text not null default 'gemini',
+  created_at timestamptz not null default now()
+);
+
 alter table public.subjects enable row level security;
 alter table public.notes enable row level security;
 alter table public.exams enable row level security;
 alter table public.study_sessions enable row level security;
+alter table public.assistant_responses enable row level security;
 
 drop policy if exists "Users manage own subjects" on public.subjects;
 drop policy if exists "Users manage own notes" on public.notes;
 drop policy if exists "Users manage own exams" on public.exams;
 drop policy if exists "Users manage own study sessions" on public.study_sessions;
+drop policy if exists "Users manage own assistant responses" on public.assistant_responses;
 
 create policy "Users manage own subjects" on public.subjects for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage own notes" on public.notes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage own exams" on public.exams for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage own study sessions" on public.study_sessions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users manage own assistant responses" on public.assistant_responses for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 insert into storage.buckets (id, name, public)
 values ('study-files', 'study-files', false)

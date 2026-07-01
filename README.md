@@ -19,6 +19,7 @@ El proyecto esta armado como una app React con Vite. Esta version ya funciona co
 - Cliente Supabase preparado para auth, base de datos y storage de archivos.
 - Selector de archivos conectado a `uploadStudyFile` para subir PDF/DOC al bucket `study-files` cuando hay sesion Supabase.
 - Asistente IA conectado a una Supabase Edge Function preparada para consultar Gemini con el apunte seleccionado.
+- Respuestas de IA guardadas en Supabase para conservar los resultados generados.
 - Persistencia actual de datos de estudio en el navegador mediante `localStorage`.
 
 ## Desarrollo local
