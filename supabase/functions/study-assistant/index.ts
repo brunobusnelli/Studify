@@ -168,17 +168,14 @@ Deno.serve(async (request) => {
       .select('id,created_at')
       .single();
 
-    if (saveError) {
-      return jsonResponse({ error: 'Gemini respondio, pero no se pudo guardar el resultado.' }, 500);
-    }
-
     return jsonResponse({
       answer,
       mode,
       noteTitle: note.title,
       source: 'gemini',
-      savedId: savedResponse.id,
-      savedAt: savedResponse.created_at
+      savedId: savedResponse?.id || null,
+      savedAt: savedResponse?.created_at || null,
+      warning: saveError ? 'Respuesta generada, pero no se pudo guardar. Ejecuta el SQL actualizado de Supabase para activar el historial.' : null
     });
   } catch (error) {
     return jsonResponse({ error: error.message || 'No se pudo completar la consulta.' }, 500);

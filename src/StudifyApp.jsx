@@ -505,7 +505,7 @@ function AssistantView({ data }) {
     try {
       const result = await askStudyAssistant({ noteId: selectedNoteId, mode, question });
       setAnswer(cleanAssistantText(result.answer || 'Gemini respondio sin texto.'));
-      setAssistantStatus({ state: 'ready', message: 'Respuesta generada con Gemini.' });
+      setAssistantStatus({ state: result.warning ? 'warning' : 'ready', message: result.warning || 'Respuesta generada con Gemini.' });
     } catch (error) {
       setAssistantStatus({ state: 'error', message: error.message || 'No se pudo consultar Gemini.' });
     }

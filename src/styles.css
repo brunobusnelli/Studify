@@ -184,6 +184,12 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
   background: #f3f2ff;
   border-color: #d8d5ff;
 }
+
+.save-status.warning {
+  color: #a56b16;
+  background: #fff8e8;
+  border-color: #f5ddaa;
+}
 .bottom-nav { display: none; }
 
 @media (max-width: 1100px) {
