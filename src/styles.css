@@ -143,6 +143,7 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
 .assistant-composer button:disabled { opacity: .6; cursor: wait; }
 .assistant-output { display: grid; gap: 18px; border: 1px solid var(--line); border-radius: 8px; padding: 20px; background: #fbfbfe; }
 .assistant-output-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.assistant-output-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .assistant-output strong { display: block; font-size: 18px; margin-bottom: 6px; }
 .assistant-output small { color: var(--muted); }
 .assistant-answer { max-width: 920px; display: grid; gap: 14px; line-height: 1.62; }
