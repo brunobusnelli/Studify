@@ -18,6 +18,7 @@ El proyecto esta armado como una app React con Vite. Esta version ya funciona co
 - Creacion, edicion y eliminacion de examenes con fecha, materia y lista de temas.
 - Cliente Supabase preparado para auth, base de datos y storage de archivos.
 - Selector de archivos conectado a `uploadStudyFile` para subir PDF/DOC al bucket `study-files` cuando hay sesion Supabase.
+- Asistente IA conectado a una Supabase Edge Function preparada para consultar Gemini con el apunte seleccionado.
 - Persistencia actual de datos de estudio en el navegador mediante `localStorage`.
 
 ## Desarrollo local
@@ -52,6 +53,20 @@ Para conectar Supabase:
 
 `.env.local` queda ignorado por Git porque contiene configuracion local del proyecto.
 
+### Asistente IA con Gemini
+
+El asistente usa `supabase/functions/study-assistant`. La clave de Gemini no va en `.env.local` ni en el frontend: se guarda como secret de Supabase.
+
+Para activarlo:
+
+```bash
+supabase secrets set GEMINI_API_KEY=tu_clave_de_gemini
+supabase secrets set GEMINI_MODEL=gemini-3.5-flash
+supabase functions deploy study-assistant
+```
+
+`GEMINI_MODEL` es opcional; si no esta configurado, la funcion usa `gemini-3.5-flash`.
+
 ## Demo con GitHub Pages
 
 El repositorio incluye `.github/workflows/deploy.yml`. Para publicar la demo:
@@ -70,5 +85,5 @@ https://brunobusnelli.github.io/Studify/
 
 1. Migrar materias, apuntes, sesiones y examenes desde `localStorage` a Supabase.
 2. Guardar registros de apuntes en la tabla `notes` junto al `file_path` de Storage.
-3. Extraer texto de archivos y conectar resumen/preguntas con IA.
+3. Probar el asistente IA desplegado con Gemini y ajustar prompts por tecnica de estudio.
 4. Separar componentes por carpeta cuando crezca la app.

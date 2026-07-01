@@ -130,6 +130,7 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
 .assistant-composer { display: grid; grid-template-columns: 1fr 56px; gap: 10px; margin-bottom: 16px; }
 .assistant-composer input { border: 1px solid var(--line); min-height: 46px; border-radius: 8px; padding: 0 14px; color: var(--ink); }
 .assistant-composer button { border-radius: 8px; background: var(--primary); color: #fff; display: grid; place-items: center; }
+.assistant-composer button:disabled { opacity: .6; cursor: wait; }
 .assistant-output { display: grid; gap: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 18px; background: #fbfbfe; }
 .assistant-output strong { font-size: 18px; }
 .assistant-output small { color: var(--muted); }
@@ -175,6 +176,12 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
   color: #d84444;
   background: #fff2f2;
   border-color: #ffd6d6;
+}
+
+.save-status.loading {
+  color: var(--primary);
+  background: #f3f2ff;
+  border-color: #d8d5ff;
 }
 .bottom-nav { display: none; }
 
