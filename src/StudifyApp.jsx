@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Clock3,
+  BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Clock3, Copy,
   ExternalLink, FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, ListChecks, Menu, Moon,
   LogOut, MoreHorizontal, Pause, Pencil, Play, Plus, RotateCcw, Search, Send, Sparkles, Target,
   TimerReset, Trash2, Trophy, Upload, User, X
@@ -93,6 +93,10 @@ const cleanAssistantText = (value) => String(value)
   .join('\n')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
+const stripMarkdownMarks = (value) => value.replace(/\*\*(.*?)\*\*/g, '$1').trim();
+const isHeadingLine = (value) => /^\*\*.+\*\*:?$/.test(value.trim()) || /^#{1,3}\s+/.test(value.trim());
+const isBulletLine = (value) => /^[-*]\s+/.test(value.trim());
+const isNumberedLine = (value) => /^\d+\.\s+/.test(value.trim());
 
 function readData() {
   try {
@@ -450,6 +454,36 @@ function StatsView({ data, summary }) {
   return <section className="view active"><div className="stats-layout"><section className="panel"><select className="full-select"><option>Esta semana</option></select><h2>Horas de estudio</h2><strong className="big-number">{summary.hours} h</strong><small className="positive">datos guardados localmente</small><BarChart bars={summary.bars} tall /></section><section className="panel"><h2>Tiempo por materia</h2><div className="donut" /><ul className="subject-list">{data.subjects.map((subject) => <li key={subject.id}><span className={`dot ${subject.color}`} />{subject.name} <b>{summary.subjectHours[subject.name] || 0} h</b></li>)}</ul></section></div></section>;
 }
 
+function AssistantAnswer({ text }) {
+  const blocks = cleanAssistantText(text).split('\n').map((line) => line.trim()).filter(Boolean);
+  const items = [];
+
+  for (let index = 0; index < blocks.length; index += 1) {
+    const line = blocks[index];
+    if (isHeadingLine(line)) {
+      items.push({ type: 'heading', text: stripMarkdownMarks(line.replace(/^#{1,3}\s+/, '').replace(/:$/, '')) });
+      continue;
+    }
+    if (isBulletLine(line) || isNumberedLine(line)) {
+      const list = [];
+      while (index < blocks.length && (isBulletLine(blocks[index]) || isNumberedLine(blocks[index]))) {
+        list.push(stripMarkdownMarks(blocks[index].replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '')));
+        index += 1;
+      }
+      index -= 1;
+      items.push({ type: 'list', items: list });
+      continue;
+    }
+    items.push({ type: 'paragraph', text: stripMarkdownMarks(line) });
+  }
+
+  return <div className="assistant-answer">{items.map((item, index) => {
+    if (item.type === 'heading') return <h3 key={`${item.type}-${index}`}>{item.text}</h3>;
+    if (item.type === 'list') return <ul key={`${item.type}-${index}`}>{item.items.map((entry) => <li key={entry}>{entry}</li>)}</ul>;
+    return <p key={`${item.type}-${index}`}>{item.text}</p>;
+  })}</div>;
+}
+
 function AssistantView({ data }) {
   const notesWithFiles = data.notes.filter((note) => note.filePath || note.fileName);
   const [selectedNoteId, setSelectedNoteId] = useState(notesWithFiles[0]?.id || data.notes[0]?.id || '');
@@ -457,6 +491,7 @@ function AssistantView({ data }) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [assistantStatus, setAssistantStatus] = useState({ state: 'idle', message: '' });
+  const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!data.notes.length) {
       setSelectedNoteId('');
@@ -512,7 +547,12 @@ function AssistantView({ data }) {
   };
   const outputText = answer || suggestions[mode].join('\n\n');
   const statusLabel = assistantStatus.state === 'loading' ? 'Gemini' : assistantStatus.state === 'ready' ? 'Listo' : assistantStatus.state === 'error' ? 'Error' : 'Borrador';
-  return <section className="view active"><div className="assistant-workspace"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>IA Asistente</h2><p className="muted">Elegi un apunte y una accion para preparar tu estudio.</p><div className="ai-actions">{actionButtons.map(([key, Icon, title, body]) => <button type="button" className={mode === key ? 'active' : ''} key={key} onClick={() => setMode(key)}><div><strong>{title}</strong><span>{body}</span></div><Icon size={22} /></button>)}</div></div><div className="panel assistant-panel"><div className="panel-heading"><h2>{modeLabels[mode]}</h2><span className={`status-pill ${assistantStatus.state}`}>{statusLabel}</span></div>{data.notes.length ? <><label className="note-picker"><span>Apunte</span><select value={selectedNoteId} onChange={(event) => setSelectedNoteId(event.target.value)}>{data.notes.map((note) => <option key={note.id} value={note.id}>{note.title}</option>)}</select></label><form className="assistant-composer" onSubmit={submitAssistant}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una duda o tema puntual..." /><button type="submit" aria-label="Enviar" disabled={assistantStatus.state === 'loading'}><Send size={20} /></button></form>{assistantStatus.message ? <p className={`save-status ${assistantStatus.state}`}>{assistantStatus.message}</p> : null}<div className="assistant-output"><strong>{selectedNote?.title}</strong><small>{selectedNote?.subject} - {selectedNote?.type} - {selectedNote?.size}</small><div className="assistant-answer">{outputText}</div></div></> : <p className="empty-state">Subi un apunte para empezar a trabajar con el asistente.</p>}</div></div></section>;
+  const copyAnswer = async () => {
+    await navigator.clipboard.writeText(outputText);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+  return <section className="view active"><div className="assistant-workspace"><div className="panel ai-panel"><div className="sparkle"><Sparkles size={36} /></div><h2>IA Asistente</h2><p className="muted">Elegi un apunte y una accion para preparar tu estudio.</p><div className="ai-actions">{actionButtons.map(([key, Icon, title, body]) => <button type="button" className={mode === key ? 'active' : ''} key={key} onClick={() => setMode(key)}><div><strong>{title}</strong><span>{body}</span></div><Icon size={22} /></button>)}</div></div><div className="panel assistant-panel"><div className="panel-heading"><h2>{modeLabels[mode]}</h2><span className={`status-pill ${assistantStatus.state}`}>{statusLabel}</span></div>{data.notes.length ? <><label className="note-picker"><span>Apunte</span><select value={selectedNoteId} onChange={(event) => setSelectedNoteId(event.target.value)}>{data.notes.map((note) => <option key={note.id} value={note.id}>{note.title}</option>)}</select></label><form className="assistant-composer" onSubmit={submitAssistant}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Escribe una duda o tema puntual..." /><button type="submit" aria-label="Enviar" disabled={assistantStatus.state === 'loading'}><Send size={20} /></button></form>{assistantStatus.message ? <p className={`save-status ${assistantStatus.state}`}>{assistantStatus.message}</p> : null}<div className="assistant-output"><div className="assistant-output-head"><div><strong>{selectedNote?.title}</strong><small>{selectedNote?.subject} - {selectedNote?.type} - {selectedNote?.size}</small></div><button type="button" className="secondary-button compact" onClick={copyAnswer}><Copy size={16} />{copied ? 'Copiado' : 'Copiar'}</button></div><AssistantAnswer text={outputText} /></div></> : <p className="empty-state">Subi un apunte para empezar a trabajar con el asistente.</p>}</div></div></section>;
 }
 
 function CalendarView({ data, addExam, updateExam, deleteExam, toggleTopic }) {
