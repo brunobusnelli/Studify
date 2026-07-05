@@ -459,3 +459,35 @@
     border-radius: 999px;
   }
 }
+
+.theme-dark .quick-form input,
+.theme-dark .quick-form select,
+.theme-dark .quick-form textarea,
+.theme-dark .file-upload-box,
+.theme-dark .subject-card,
+.theme-dark .session-card,
+.theme-dark .exam-card {
+  background: #111729;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.theme-dark .file-upload-box small,
+.theme-dark .subject-card small,
+.theme-dark .session-card small {
+  color: var(--muted);
+}
+
+.theme-dark .quick-form input:focus,
+.theme-dark .quick-form select:focus,
+.theme-dark .quick-form textarea:focus {
+  border-color: rgba(129, 124, 255, 0.65);
+  box-shadow: 0 0 0 4px rgba(129, 124, 255, 0.16);
+}
+
+.theme-dark .topic-list label,
+.theme-dark .study-tip {
+  background: #111729;
+  border-color: var(--line);
+  color: var(--ink) !important;
+}
