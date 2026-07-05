@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Bell, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Clock3,
-  ExternalLink, FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, ListChecks, Menu, Moon,
+  ExternalLink, FileText, Flame, FolderOpen, GraduationCap, Home, Lightbulb, ListChecks, LoaderCircle, Menu, Moon,
   MoreHorizontal, Pause, Pencil, Play, Plus, Send, Sparkles, Sun, Target,
   TimerReset, Trash2, User, X
 } from 'lucide-react';
@@ -425,12 +425,19 @@ export default function StudifyApp({ user, onLogout }) {
   const resetTimer = () => { setRunning(false); setTimer(1500); };
 
   if (sync.provider === 'supabase' && sync.status === 'loading') {
-    return <main className="auth-page">
-      <section className="auth-card">
+    return <main className="auth-page auth-loading-page">
+      <section className="auth-loading-card">
+        <div className="auth-loading-logo"><GraduationCap size={34} /><span><LoaderCircle size={22} /></span></div>
         <div>
           <h2>Cargando Studify</h2>
-          <p>Sincronizando tus datos con Supabase.</p>
+          <p>Sincronizando tus apuntes y progreso.</p>
         </div>
+        <div className="auth-loading-steps" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="auth-loading-foot"><Sparkles size={18} />Conectando con Supabase</div>
       </section>
     </main>;
   }
