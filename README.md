@@ -119,7 +119,11 @@ VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 ```
 
+El workflow `.github/workflows/deploy.yml` toma esos valores desde GitHub Secrets o GitHub Variables durante el build.
+
 ## Guia de presentacion
+
+Tambien hay un guion listo en `PRESENTACION.md`.
 
 Orden sugerido para mostrar el MVP:
 
@@ -147,4 +151,3 @@ Orden sugerido para mostrar el MVP:
 - [ ] Pomodoro registra sesiones.
 - [ ] Estadisticas reflejan sesiones.
 - [ ] Calendario muestra examen cercano y progreso.
-
