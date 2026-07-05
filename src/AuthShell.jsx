@@ -1,5 +1,5 @@
 import { cloneElement, isValidElement, useEffect, useState } from 'react';
-import { BookOpen, GraduationCap, LogOut, Mail, UserPlus } from 'lucide-react';
+import { BookOpen, GraduationCap, LoaderCircle, LogOut, Mail, Sparkles, UserPlus } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from './lib/supabaseClient.js';
 
 const defaultUser = {
@@ -129,12 +129,19 @@ export default function AuthShell({ children }) {
   };
 
   if (!authReady) {
-    return <main className="auth-page">
-      <section className="auth-card">
+    return <main className="auth-page auth-loading-page">
+      <section className="auth-loading-card">
+        <div className="auth-loading-logo"><GraduationCap size={34} /><span><LoaderCircle size={22} /></span></div>
         <div>
           <h2>Cargando Studify</h2>
-          <p>Conectando tu sesion con Supabase.</p>
+          <p>Preparando tu espacio de estudio.</p>
         </div>
+        <div className="auth-loading-steps" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="auth-loading-foot"><Sparkles size={18} />Sincronizando tu sesion</div>
       </section>
     </main>;
   }
