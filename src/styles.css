@@ -408,6 +408,18 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
   background: #293047;
 }
 
+.theme-dark .exam-metrics span {
+  background: #111729;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.theme-dark .progress-topic-list li.completed label {
+  background: #143627;
+  border-color: #245c43;
+  color: #91e1bc;
+}
+
 .theme-dark .bottom-nav {
   background: rgba(13, 18, 32, 0.96);
   border-color: var(--line);

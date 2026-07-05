@@ -323,6 +323,43 @@
   background: linear-gradient(90deg, #4f7af0, var(--primary));
 }
 
+.progress-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-summary strong {
+  color: var(--primary);
+  font-size: 16px;
+}
+
+.progress-summary span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.exam-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.exam-metrics span {
+  display: grid;
+  min-height: 34px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbfe;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .topic-list {
   display: grid;
   gap: 8px;
@@ -347,6 +384,22 @@
   width: 16px;
   height: 16px;
   accent-color: var(--primary);
+}
+
+.progress-topic-list label {
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.progress-topic-list li.completed label {
+  border-color: #caeedc;
+  background: #effbf5;
+  color: #25845d;
+}
+
+.progress-topic-list li.completed span {
+  text-decoration: line-through;
+  text-decoration-color: rgba(37, 132, 93, 0.45);
+  text-decoration-thickness: 2px;
 }
 
 .exam-list {

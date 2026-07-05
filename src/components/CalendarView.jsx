@@ -17,17 +17,24 @@ function QuickForm({ title, children, onSubmit, editing, onCancel, submitting = 
 
 function ExamFocus({ exam, toggleTopic }) {
   if (!exam) return <section className="panel focus-panel"><h2>No hay examenes cargados</h2><p>Agrega un examen para ver una recomendacion diaria.</p></section>;
-  const progress = Math.round((exam.completedTopics.length / Math.max(exam.topics.length, 1)) * 100);
-  const remaining = Math.max(exam.estimatedHours - exam.completedTopics.length * 2, 1);
+  const totalTopics = Math.max(exam.topics.length, 1);
+  const completedCount = exam.completedTopics.length;
+  const pendingCount = Math.max(exam.topics.length - completedCount, 0);
+  const progress = Math.round((completedCount / totalTopics) * 100);
+  const remaining = Math.max(exam.estimatedHours - completedCount * 2, 1);
   const daily = Math.max(0.5, Math.round((remaining / Math.max(daysUntil(exam.date), 1)) * 10) / 10);
   return <section className="panel focus-panel">
     <div className="panel-heading"><h2>Examen cercano</h2><span className="status-pill">Faltan {daysUntil(exam.date)} dias</span></div>
     <strong>{exam.title}</strong><p>{exam.subject} - {formatDate(exam.date)}</p>
     <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
-    <small>{progress}% preparado - quedan aprox. {remaining} h</small>
+    <div className="progress-summary"><strong>{progress}% preparado</strong><span>{completedCount}/{exam.topics.length} temas completados</span></div>
+    <div className="exam-metrics"><span>{pendingCount} pendientes</span><span>{remaining} h aprox.</span></div>
     <p className="study-tip">Recomendacion: estudia {daily} h por dia para llegar con aire.</p>
     <h3>Que estudiar hoy</h3>
-    <ul className="topic-list">{exam.topics.map((topic) => <li key={topic}><label><input type="checkbox" checked={exam.completedTopics.includes(topic)} onChange={() => toggleTopic(exam.id, topic)} />{topic}</label></li>)}</ul>
+    <ul className="topic-list progress-topic-list">{exam.topics.map((topic) => {
+      const checked = exam.completedTopics.includes(topic);
+      return <li className={checked ? 'completed' : ''} key={topic}><label><input type="checkbox" checked={checked} onChange={() => toggleTopic(exam.id, topic)} /><span>{topic}</span></label></li>;
+    })}</ul>
   </section>;
 }
 
