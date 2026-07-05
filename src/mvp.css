@@ -121,6 +121,16 @@
   border: 1px solid var(--line);
 }
 
+.row-actions button span {
+  display: none;
+}
+
+.row-actions .open-file-action {
+  color: var(--primary);
+  background: #f0efff;
+  border-color: #d8d5ff;
+}
+
 .row-actions button:hover {
   color: var(--primary);
   border-color: rgba(91, 87, 232, 0.32);
@@ -475,16 +485,47 @@
   }
 
   .editable-row {
-    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0;
+  }
+
+  .editable-row .row-actions {
+    grid-column: 2;
+    width: 100%;
+    justify-content: stretch;
   }
 
   .row-actions {
-    gap: 4px;
+    gap: 6px;
   }
 
-  .row-actions button {
-    width: 30px;
-    height: 30px;
+  .editable-row .row-actions button {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+    height: 36px;
+    display: inline-flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .editable-row .row-actions button span {
+    display: inline;
+  }
+
+  .note-detail-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .note-detail-actions .compact {
+    width: 100%;
+    justify-content: center;
   }
 
   .plan-grid {
