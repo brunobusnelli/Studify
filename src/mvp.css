@@ -464,12 +464,24 @@
 .theme-dark .quick-form select,
 .theme-dark .quick-form textarea,
 .theme-dark .file-upload-box,
+.theme-dark .plan-grid div,
+.theme-dark .explain-list p,
 .theme-dark .subject-card,
 .theme-dark .session-card,
 .theme-dark .exam-card {
   background: #111729;
   border-color: var(--line);
   color: var(--ink);
+}
+
+.theme-dark .plan-grid strong,
+.theme-dark .explain-list strong {
+  color: var(--ink);
+}
+
+.theme-dark .plan-grid small,
+.theme-dark .explain-list p {
+  color: var(--muted);
 }
 
 .theme-dark .file-upload-box small,
