@@ -25,6 +25,10 @@ function profileFromSupabaseUser(user) {
   };
 }
 
+function authRedirectUrl() {
+  return new URL(import.meta.env.BASE_URL || '/', window.location.origin).href;
+}
+
 function friendlyAuthError(message) {
   const normalized = String(message || '').toLowerCase();
   if (normalized.includes('email rate limit')) {
@@ -108,7 +112,7 @@ export default function AuthShell({ children }) {
     setLoading(true);
     const response = mode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { data: { name } } });
+      : await supabase.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: authRedirectUrl() } });
 
     setLoading(false);
 
