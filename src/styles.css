@@ -173,8 +173,14 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
 .techniques-list { max-width: 760px; margin: 0 auto; }
 .technique-row { display: grid; grid-template-columns: 72px 1fr 24px; align-items: center; gap: 16px; min-height: 112px; border-top: 1px solid var(--line); }
 .technique-row:first-of-type { border-top: 0; }
+.technique-row.active { margin-inline: -10px; padding-inline: 10px; border-radius: 8px; background: #f7f6ff; outline: 1px solid #d8d5ff; }
 .technique-emoji { width: 62px; height: 62px; display: grid; place-items: center; border-radius: 14px; background: #f0efff; color: var(--primary); }
+.technique-row small { display: block; margin-top: 4px; color: var(--primary); font-weight: 800; }
 .technique-row p { color: var(--muted); margin-top: 6px; }
+.technique-detail { display: grid; gap: 16px; align-content: start; }
+.technique-detail > p { color: var(--muted); font-weight: 700; line-height: 1.5; }
+.technique-detail ol { display: grid; gap: 10px; margin: 0; padding-left: 22px; }
+.technique-detail li { line-height: 1.45; font-weight: 650; }
 .profile-panel { max-width: 620px; margin: 0 auto; }
 .profile-head { display: flex; align-items: center; gap: 18px; margin-bottom: 28px; }
 .profile-head > div:nth-child(2) { min-width: 0; flex: 1; }
@@ -323,7 +329,8 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
 }
 
 .theme-dark .document-row.active,
-.theme-dark .ai-actions button.active {
+.theme-dark .ai-actions button.active,
+.theme-dark .technique-row.active {
   background: #202747;
   border-color: #5651d9;
   outline-color: #5651d9;
@@ -404,4 +411,8 @@ h1 { font-size: 30px; letter-spacing: 0; margin-bottom: 12px; }
 .theme-dark .bottom-nav {
   background: rgba(13, 18, 32, 0.96);
   border-color: var(--line);
+}
+
+.theme-dark .technique-row small {
+  color: #d8d6ff;
 }

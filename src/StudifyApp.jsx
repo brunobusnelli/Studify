@@ -68,11 +68,13 @@ const nav = [
 ];
 
 const techniques = [
-  [TimerReset, 'Pomodoro', '25 minutos de enfoque y 5 minutos de descanso.'],
-  [Brain, 'Tecnica Feynman', 'Explica un tema con palabras simples para descubrir dudas.'],
-  [BookOpen, 'Mapas mentales', 'Conecta conceptos visualmente para recordar relaciones clave.'],
-  [Target, 'Active recall', 'Practica recordar sin mirar tus apuntes.']
+  { icon: TimerReset, title: 'Pomodoro', category: 'Productividad', body: '25 minutos de enfoque y 5 minutos de descanso.', bestFor: 'Ideal para arrancar cuando cuesta concentrarse.', steps: ['Elegir una tarea concreta', 'Estudiar 25 minutos sin interrupciones', 'Descansar 5 minutos', 'Registrar la sesion al terminar'] },
+  { icon: Brain, title: 'Tecnica Feynman', category: 'Comprension', body: 'Explica un tema con palabras simples para descubrir dudas.', bestFor: 'Util para temas que parecen entendidos pero cuesta explicar.', steps: ['Elegir un concepto', 'Explicarlo como si fuera para otra persona', 'Detectar partes confusas', 'Volver al apunte y mejorar la explicacion'] },
+  { icon: BookOpen, title: 'Mapas mentales', category: 'Memorizacion', body: 'Conecta conceptos visualmente para recordar relaciones clave.', bestFor: 'Sirve para unidades largas con muchos conceptos relacionados.', steps: ['Poner el tema central', 'Agregar ramas principales', 'Conectar ideas secundarias', 'Repasar mirando solo el mapa'] },
+  { icon: Target, title: 'Active recall', category: 'Memorizacion', body: 'Practica recordar sin mirar tus apuntes.', bestFor: 'Muy bueno para preparar parciales y detectar huecos.', steps: ['Cerrar el apunte', 'Responder preguntas de memoria', 'Corregir con el material', 'Repetir los puntos fallados'] }
 ];
+
+const techniqueFilters = ['Todas', 'Productividad', 'Memorizacion', 'Comprension'];
 
 const week = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
 const today = () => new Date().toISOString().slice(0, 10);
@@ -355,7 +357,11 @@ function StatsView({ data, summary }) {
 }
 
 function TechniquesView() {
-  return <section className="view active"><div className="panel techniques-list"><div className="tabs"><button className="active">Todas</button><button>Productividad</button><button>Memorizacion</button><button>Comprension</button></div>{techniques.map(([Icon, title, body]) => <article className="technique-row" key={title}><span className="technique-emoji"><Icon size={32} /></span><div><strong>{title}</strong><p>{body}</p></div><button aria-label="Abrir tecnica"><ChevronRight size={20} /></button></article>)}</div></section>;
+  const [filter, setFilter] = useState('Todas');
+  const [selectedTitle, setSelectedTitle] = useState(techniques[0].title);
+  const visible = filter === 'Todas' ? techniques : techniques.filter((technique) => technique.category === filter);
+  const selected = techniques.find((technique) => technique.title === selectedTitle) || visible[0] || techniques[0];
+  return <section className="view active"><div className="content-grid"><div className="panel techniques-list"><div className="tabs">{techniqueFilters.map((item) => <button key={item} className={filter === item ? 'active' : ''} onClick={() => { setFilter(item); const next = item === 'Todas' ? techniques[0] : techniques.find((technique) => technique.category === item); if (next) setSelectedTitle(next.title); }}>{item}</button>)}</div>{visible.map(({ icon: Icon, title, body, category }) => <article className={`technique-row ${selected.title === title ? 'active' : ''}`} key={title}><span className="technique-emoji"><Icon size={32} /></span><div><strong>{title}</strong><small>{category}</small><p>{body}</p></div><button type="button" aria-label={`Abrir ${title}`} onClick={() => setSelectedTitle(title)}><ChevronRight size={20} /></button></article>)}</div><section className="panel technique-detail"><div className="panel-heading"><h2>{selected.title}</h2><span className="status-pill">{selected.category}</span></div><p>{selected.bestFor}</p><h3>Como aplicarla</h3><ol>{selected.steps.map((step) => <li key={step}>{step}</li>)}</ol><button className="secondary-button wide" type="button" onClick={() => setSelectedTitle(selected.title)}><Lightbulb size={18} />Tecnica seleccionada</button></section></div></section>;
 }
 
 export default function StudifyApp({ user, onLogout }) {
