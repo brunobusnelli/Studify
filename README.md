@@ -1,35 +1,61 @@
 # Studify
 
-Studify es una aplicacion para estudiantes enfocada en organizar el tiempo de estudio, preparar examenes, registrar progreso y trabajar con apuntes mediante un asistente IA.
+Studify es una aplicacion web para estudiantes que centraliza la organizacion del estudio: materias, apuntes, examenes, sesiones Pomodoro, estadisticas y asistencia con IA sobre archivos de estudio.
 
-## Estado actual
+## MVP
 
-El proyecto esta armado como una app React con Vite. Esta version ya funciona como un MVP local:
+Esta version esta pensada para presentar el proyecto con deploy funcionando y Supabase activo.
 
-- Login y registro visual con fallback local.
-- Login y registro reales con Supabase Auth cuando existen variables `.env.local`.
-- Dashboard con resumen semanal, racha, sesiones y apuntes guardados.
-- Plan de Hoy calculado desde el examen mas urgente, temas pendientes y horas restantes.
+Funcionalidades incluidas:
+
+- Login y registro con Supabase Auth.
+- Fallback local si no hay variables de Supabase configuradas.
+- Dashboard con horas de estudio, racha, sesiones, apuntes y plan del dia.
 - Materias creadas, editadas y eliminadas desde el perfil.
-- Apuntes creados, editados, borrados, filtrados por materia y cargados desde PDF/DOC/DOCX.
-- Pomodoro interactivo con registro de sesiones de estudio.
-- Historial de sesiones con carga manual, edicion y eliminacion.
-- Estadisticas calculadas desde las sesiones guardadas.
-- Creacion, edicion y eliminacion de examenes con fecha, materia y lista de temas.
-- Cliente Supabase preparado para auth, base de datos y storage de archivos.
-- Selector de archivos conectado a `uploadStudyFile` para subir PDF/DOC al bucket `study-files` cuando hay sesion Supabase.
-- Asistente IA conectado a una Supabase Edge Function preparada para consultar Gemini con el apunte seleccionado.
-- Respuestas de IA guardadas en Supabase para conservar los resultados generados.
-- Persistencia actual de datos de estudio en el navegador mediante `localStorage`.
+- Apuntes creados, editados, filtrados y eliminados.
+- Subida de archivos PDF, DOC y DOCX a Supabase Storage.
+- Apertura de archivos mediante URL firmada.
+- Asistente IA conectado a una Supabase Edge Function con Gemini.
+- Resumen, explicacion y generacion de preguntas desde un apunte.
+- Historial de respuestas IA guardado en Supabase.
+- Registro de sesiones de estudio desde Pomodoro y desde respuestas IA.
+- Estadisticas semanales calculadas desde las sesiones guardadas.
+- Calendario de examenes con temas pendientes y progreso.
+- Persistencia remota de materias, apuntes, sesiones y examenes en Supabase.
+
+## Stack
+
+- React
+- Vite
+- Supabase Auth
+- Supabase Database
+- Supabase Storage
+- Supabase Edge Functions
+- Gemini API
+- Lucide React
 
 ## Desarrollo local
 
+Instalar dependencias:
+
 ```bash
 npm install
+```
+
+Crear `.env.local` desde `.env.example`:
+
+```bash
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-anon-key
+```
+
+Levantar la app:
+
+```bash
 npm run dev
 ```
 
-## Build
+Build de produccion:
 
 ```bash
 npm run build
@@ -37,28 +63,30 @@ npm run build
 
 ## Supabase
 
-El proyecto ya incluye:
+El proyecto incluye `supabase/schema.sql` con:
 
-- `.env.example` con las variables necesarias.
-- `src/lib/supabaseClient.js` para crear el cliente de Supabase.
-- `src/lib/studyFiles.js` para preparar/subir archivos de estudio.
-- `supabase/schema.sql` con tablas iniciales, RLS y bucket `study-files` para PDFs/DOCs.
+- Tablas `subjects`, `notes`, `exams`, `study_sessions` y `assistant_responses`.
+- Row Level Security para que cada usuario vea solo sus datos.
+- Bucket privado `study-files`.
+- Politicas de Storage para subir, leer y borrar archivos del usuario.
 
-Para conectar Supabase:
+Para preparar Supabase:
 
 1. Crear un proyecto en Supabase.
-2. Copiar `.env.example` como `.env.local`.
-3. Completar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
-4. Ejecutar el SQL de `supabase/schema.sql` en el editor SQL de Supabase.
-5. Probar registro/login desde la app.
+2. Ejecutar `supabase/schema.sql` en SQL Editor.
+3. Configurar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en local y en el deploy.
+4. Verificar que el bucket `study-files` exista.
+5. Probar registro, login, carga de materia y subida de apunte.
 
-`.env.local` queda ignorado por Git porque contiene configuracion local del proyecto.
+## Asistente IA con Gemini
 
-### Asistente IA con Gemini
+La IA usa la Edge Function:
 
-El asistente usa `supabase/functions/study-assistant`. La clave de Gemini no va en `.env.local` ni en el frontend: se guarda como secret de Supabase.
+```text
+supabase/functions/study-assistant
+```
 
-Para activarlo:
+La clave de Gemini no se guarda en el frontend. Se configura como secret de Supabase:
 
 ```bash
 supabase secrets set GEMINI_API_KEY=tu_clave_de_gemini
@@ -66,25 +94,57 @@ supabase secrets set GEMINI_MODEL=gemini-3.5-flash
 supabase functions deploy study-assistant
 ```
 
-`GEMINI_MODEL` es opcional; si no esta configurado, la funcion usa `gemini-3.5-flash`.
+El flujo de IA es:
 
-## Demo con GitHub Pages
+1. El usuario elige un apunte.
+2. La app llama a la Edge Function.
+3. La funcion descarga el archivo desde Supabase Storage.
+4. Gemini genera resumen, explicacion o preguntas.
+5. La respuesta queda guardada en `assistant_responses`.
 
-El repositorio incluye `.github/workflows/deploy.yml`. Para publicar la demo:
+## Deploy
 
-1. Ir a `Settings` > `Pages` en GitHub.
-2. En `Build and deployment`, elegir `GitHub Actions`.
-3. Ejecutar el workflow `Deploy Studify` o hacer un nuevo push a `main`.
+El proyecto esta preparado para deploy con GitHub Pages mediante GitHub Actions.
 
-Cuando termine, la demo deberia quedar disponible en:
+URL esperada:
 
 ```text
 https://brunobusnelli.github.io/Studify/
 ```
 
-## Proximos pasos sugeridos
+Para que el deploy funcione con Supabase, configurar estos secrets/variables en GitHub Actions:
 
-1. Migrar materias, apuntes, sesiones y examenes desde `localStorage` a Supabase.
-2. Guardar registros de apuntes en la tabla `notes` junto al `file_path` de Storage.
-3. Probar el asistente IA desplegado con Gemini y ajustar prompts por tecnica de estudio.
-4. Separar componentes por carpeta cuando crezca la app.
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+```
+
+## Guia de presentacion
+
+Orden sugerido para mostrar el MVP:
+
+1. Iniciar sesion con Supabase.
+2. Mostrar el dashboard y el Plan de Hoy.
+3. Crear o mostrar una materia.
+4. Subir un apunte PDF/DOC/DOCX.
+5. Abrir el apunte guardado.
+6. Usar IA para resumir o explicar el apunte.
+7. Mostrar historial de respuestas IA.
+8. Registrar una sesion de estudio.
+9. Mostrar estadisticas.
+10. Crear un examen con temas pendientes.
+11. Mostrar la recomendacion de estudio para el examen cercano.
+
+## Checklist final del MVP
+
+- [ ] Deploy abre correctamente.
+- [ ] Login y registro funcionan.
+- [ ] Los datos persisten al recargar.
+- [ ] Se puede crear una materia.
+- [ ] Se puede subir y abrir un archivo.
+- [ ] La IA responde usando Gemini.
+- [ ] Las respuestas IA quedan guardadas.
+- [ ] Pomodoro registra sesiones.
+- [ ] Estadisticas reflejan sesiones.
+- [ ] Calendario muestra examen cercano y progreso.
+
