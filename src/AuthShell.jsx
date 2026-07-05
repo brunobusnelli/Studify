@@ -80,12 +80,28 @@ export default function AuthShell({ children }) {
     event.preventDefault();
     setMessage('');
     const form = new FormData(event.currentTarget);
-    const email = form.get('email') || defaultUser.email;
-    const password = form.get('password') || 'studify-demo';
-    const name = form.get('name') || defaultUser.name;
+    const email = String(form.get('email') || '').trim();
+    const password = String(form.get('password') || '');
+    const confirmPassword = String(form.get('confirmPassword') || '');
+    const name = String(form.get('name') || '').trim();
+
+    if (!email || !password || (mode === 'register' && !name)) {
+      setMessage('Completa todos los campos obligatorios.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setMessage('La contrasena debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (mode === 'register' && password !== confirmPassword) {
+      setMessage('Las contrasenas no coinciden.');
+      return;
+    }
 
     if (!isSupabaseConfigured) {
-      setUser({ name, email, provider: 'demo' });
+      setUser({ name: name || defaultUser.name, email, provider: 'demo' });
       return;
     }
 
@@ -150,9 +166,10 @@ export default function AuthShell({ children }) {
         <p>{mode === 'login' ? 'Entra a tu espacio de estudio.' : 'Crea tu perfil de estudiante.'}</p>
       </div>
       <form className="auth-form" onSubmit={submitAuth}>
-        {mode === 'register' ? <input name="name" placeholder="Nombre" /> : null}
-        <input name="email" type="email" placeholder="Email" defaultValue="estudiante@mail.com" />
-        <input name="password" type="password" placeholder="Contrasena" defaultValue="studify-demo" />
+        {mode === 'register' ? <input name="name" placeholder="Nombre" autoComplete="name" required /> : null}
+        <input name="email" type="email" placeholder="Email" autoComplete="email" required />
+        <input name="password" type="password" placeholder="Contrasena" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} required />
+        {mode === 'register' ? <input name="confirmPassword" type="password" placeholder="Confirmar contrasena" autoComplete="new-password" minLength={6} required /> : null}
         {message ? <p className="auth-message">{message}</p> : null}
         <button className="primary-button" type="submit" disabled={loading}>{mode === 'login' ? <Mail size={18} /> : <UserPlus size={18} />}{loading ? 'Procesando...' : mode === 'login' ? 'Entrar' : 'Registrarme'}</button>
       </form>

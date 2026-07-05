@@ -50,7 +50,7 @@ const emptyStudyData = {
 };
 
 const pages = {
-  home: ['Hola, Usuario', 'La disciplina de hoy es el exito de manana.'],
+  home: ['Hola', 'La disciplina de hoy es el exito de manana.'],
   plan: ['Plan de Hoy', 'Una guia concreta para avanzar sin perder foco.'],
   notes: ['Mis Apuntes', 'Carga materiales y organizalos por materia.'],
   stats: ['Estadisticas', 'Mira como avanza tu estudio esta semana.'],
@@ -259,11 +259,12 @@ function Sidebar({ active, open, changeView, close, user }) {
   </aside>;
 }
 
-function Header({ active, openMenu, changeView, sync }) {
+function Header({ active, openMenu, changeView, sync, user }) {
   const [title, subtitle] = pages[active];
+  const displayTitle = active === 'home' ? `${title}, ${user?.name || 'Usuario'}` : title;
   return <header className="topbar">
     <IconButton label="Abrir menu" onClick={openMenu}><Menu size={22} /></IconButton>
-    <div className="title-block"><h1>{title}{active === 'home' ? '!' : ''}</h1><p>{subtitle}</p></div>
+    <div className="title-block"><h1>{displayTitle}{active === 'home' ? '!' : ''}</h1><p>{subtitle}</p></div>
     <div className="top-actions"><span className={`sync-pill ${sync?.status || 'local'}`}>{sync?.provider === 'supabase' ? 'Supabase' : 'Local'}</span><IconButton label="Notificaciones"><Bell size={20} /></IconButton><IconButton label="Modo oscuro"><Moon size={20} /></IconButton><button className="primary-button" onClick={() => changeView('notes')}><Plus size={18} />Nuevo Apunte</button></div>
   </header>;
 }
@@ -407,5 +408,5 @@ export default function StudifyApp({ user, onLogout }) {
     </main>;
   }
 
-  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} user={user} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} sync={sync} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} updateSession={updateSession} deleteSession={deleteSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} addSession={addSession} changeView={changeView} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} updateSubject={updateSubject} deleteSubject={deleteSubject} summary={summary} user={user} onLogout={onLogout} sync={sync} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
+  return <div className="app-shell"><Sidebar active={active} open={menuOpen} changeView={changeView} close={() => setMenuOpen(false)} user={user} /><main className="main-content"><Header active={active} openMenu={() => setMenuOpen(true)} changeView={changeView} sync={sync} user={user} />{active === 'home' && <HomeView data={data} summary={summary} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} changeView={changeView} toggleTopic={toggleTopic} />}{active === 'plan' && <PlanView summary={summary} changeView={changeView} />}{active === 'notes' && <NotesView data={data} addNote={addNote} updateNote={updateNote} deleteNote={deleteNote} />}{active === 'pomodoro' && <PomodoroView data={data} timer={timer} running={running} toggleTimer={() => setRunning((value) => !value)} resetTimer={resetTimer} addSession={addSession} updateSession={updateSession} deleteSession={deleteSession} />}{active === 'stats' && <StatsView data={data} summary={summary} />}{active === 'assistant' && <AssistantView data={data} addSession={addSession} changeView={changeView} />}{active === 'calendar' && <CalendarView data={data} addExam={addExam} updateExam={updateExam} deleteExam={deleteExam} toggleTopic={toggleTopic} />}{active === 'techniques' && <TechniquesView />}{active === 'profile' && <ProfileView data={data} addSubject={addSubject} updateSubject={updateSubject} deleteSubject={deleteSubject} summary={summary} user={user} onLogout={onLogout} sync={sync} />}</main><nav className="bottom-nav">{nav.filter(([key]) => ['home', 'notes', 'plan', 'stats', 'profile'].includes(key)).map(([key, label, Icon]) => <button className={`nav-item ${active === key ? 'active' : ''}`} key={key} onClick={() => changeView(key)}><Icon size={20} /><span>{label.replace('Mis ', '')}</span></button>)}</nav></div>;
 }
