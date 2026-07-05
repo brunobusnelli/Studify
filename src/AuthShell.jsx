@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabaseClient.js';
 
 const defaultUser = {
   name: 'Usuario',
-  email: 'estudiante@mail.com',
+  email: '',
   provider: 'demo'
 };
 
@@ -101,7 +101,7 @@ export default function AuthShell({ children }) {
     }
 
     if (!isSupabaseConfigured) {
-      setUser({ name: name || defaultUser.name, email, provider: 'demo' });
+      setUser({ name: name || defaultUser.name, email: email || defaultUser.email, provider: 'demo' });
       return;
     }
 
@@ -165,10 +165,10 @@ export default function AuthShell({ children }) {
         <h2>{mode === 'login' ? 'Iniciar sesion' : 'Crear cuenta'}</h2>
         <p>{mode === 'login' ? 'Entra a tu espacio de estudio.' : 'Crea tu perfil de estudiante.'}</p>
       </div>
-      <form className="auth-form" onSubmit={submitAuth}>
+      <form className="auth-form" onSubmit={submitAuth} autoComplete="off" key={mode}>
         {mode === 'register' ? <input name="name" placeholder="Nombre" autoComplete="name" required /> : null}
-        <input name="email" type="email" placeholder="Email" autoComplete="email" required />
-        <input name="password" type="password" placeholder="Contrasena" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} required />
+        <input name="email" type="email" placeholder="Email" autoComplete="off" required />
+        <input name="password" type="password" placeholder="Contrasena" autoComplete="off" minLength={6} required />
         {mode === 'register' ? <input name="confirmPassword" type="password" placeholder="Confirmar contrasena" autoComplete="new-password" minLength={6} required /> : null}
         {message ? <p className="auth-message">{message}</p> : null}
         <button className="primary-button" type="submit" disabled={loading}>{mode === 'login' ? <Mail size={18} /> : <UserPlus size={18} />}{loading ? 'Procesando...' : mode === 'login' ? 'Entrar' : 'Registrarme'}</button>
