@@ -68,6 +68,7 @@
   color: var(--muted);
   font-weight: 700;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .file-input {
@@ -102,6 +103,7 @@
   font-style: normal;
   font-weight: 700;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .row-actions {
@@ -476,6 +478,14 @@
 @media (max-width: 720px) {
   .content-grid {
     gap: 14px;
+  }
+
+  .file-upload-box {
+    grid-template-columns: 1fr;
+  }
+
+  .file-upload-box svg {
+    grid-row: auto;
   }
 
   .quick-form input,
