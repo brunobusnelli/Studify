@@ -19,10 +19,12 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function mimeTypeFor(note: { file_name?: string | null; file_type?: string | null }) {
+function isPdfNote(note: { file_name?: string | null; file_type?: string | null }) {
   const name = note.file_name?.toLowerCase() || '';
-  if (name.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  if (name.endsWith('.doc')) return 'application/msword';
+  return note.file_type === 'PDF' || name.endsWith('.pdf');
+}
+
+function mimeTypeFor(_note: { file_name?: string | null; file_type?: string | null }) {
   return 'application/pdf';
 }
 
@@ -99,6 +101,7 @@ Deno.serve(async (request) => {
 
     if (noteError || !note) return jsonResponse({ error: 'No se encontro el apunte.' }, 404);
     if (!note.file_path) return jsonResponse({ error: 'Este apunte no tiene archivo subido para analizar.' }, 400);
+    if (!isPdfNote(note)) return jsonResponse({ error: 'El asistente IA por ahora analiza archivos PDF. Converti este DOC/DOCX a PDF y volvelo a subir.' }, 415);
 
     const { data: signedFile, error: fileError } = await supabase
       .storage

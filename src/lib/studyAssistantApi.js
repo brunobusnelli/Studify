@@ -13,7 +13,14 @@ export async function askStudyAssistant({ noteId, mode, question }) {
   });
 
   if (error) {
-    throw new Error(error.message || 'No se pudo consultar Gemini.');
+    let message = error.message || 'No se pudo consultar Gemini.';
+    try {
+      const payload = await error.context?.json?.();
+      if (payload?.error) message = payload.error;
+    } catch {
+      // Supabase no siempre expone el cuerpo del error.
+    }
+    throw new Error(message);
   }
   if (data?.error) {
     throw new Error(data.error);
