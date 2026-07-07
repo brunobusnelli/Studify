@@ -301,9 +301,6 @@
   }
 
   .session-chip {
-    left: 12px;
-    right: 12px;
-    bottom: 78px;
-    justify-content: space-between;
+    display: none;
   }
 }
