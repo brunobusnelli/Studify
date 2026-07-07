@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import mammoth from 'npm:mammoth@1.8.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,9 +20,12 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function isPdfNote(note: { file_name?: string | null; file_type?: string | null }) {
+function fileKindFor(note: { file_name?: string | null; file_type?: string | null }) {
   const name = note.file_name?.toLowerCase() || '';
-  return note.file_type === 'PDF' || name.endsWith('.pdf');
+  if (note.file_type === 'PDF' || name.endsWith('.pdf')) return 'pdf';
+  if (name.endsWith('.docx')) return 'docx';
+  if (name.endsWith('.doc')) return 'old-doc';
+  return 'unsupported';
 }
 
 function mimeTypeFor(_note: { file_name?: string | null; file_type?: string | null }) {
@@ -101,7 +105,9 @@ Deno.serve(async (request) => {
 
     if (noteError || !note) return jsonResponse({ error: 'No se encontro el apunte.' }, 404);
     if (!note.file_path) return jsonResponse({ error: 'Este apunte no tiene archivo subido para analizar.' }, 400);
-    if (!isPdfNote(note)) return jsonResponse({ error: 'El asistente IA por ahora analiza archivos PDF. Converti este DOC/DOCX a PDF y volvelo a subir.' }, 415);
+    const fileKind = fileKindFor(note);
+    if (fileKind === 'old-doc') return jsonResponse({ error: 'El formato .doc antiguo no es compatible con IA. Guardalo como DOCX o PDF y volvelo a subir.' }, 415);
+    if (fileKind === 'unsupported') return jsonResponse({ error: 'El asistente IA puede analizar archivos PDF y DOCX.' }, 415);
 
     const { data: signedFile, error: fileError } = await supabase
       .storage
@@ -118,6 +124,13 @@ Deno.serve(async (request) => {
     }
 
     const fileBytes = new Uint8Array(await fileResponse.arrayBuffer());
+    let extractedText = '';
+    if (fileKind === 'docx') {
+      const result = await mammoth.extractRawText({ arrayBuffer: fileBytes.buffer.slice(fileBytes.byteOffset, fileBytes.byteOffset + fileBytes.byteLength) });
+      extractedText = result.value.trim();
+      if (!extractedText) return jsonResponse({ error: 'No se pudo extraer texto del DOCX. Prob� convertirlo a PDF y subirlo de nuevo.' }, 422);
+    }
+
     const subject = Array.isArray(note.subjects) ? note.subjects[0]?.name : note.subjects?.name;
     const prompt = [
       modePrompts[mode],
@@ -130,6 +143,7 @@ Deno.serve(async (request) => {
       `Tipo: ${note.file_type || 'PDF'}`,
       question ? `Consulta del estudiante: ${question}` : '',
       '',
+      extractedText ? `Contenido extraido del DOCX:` + "\n" + extractedText.slice(0, 120000) : '',
       'Responde en espanol claro, con formato facil de estudiar. Si el archivo no es legible, decilo sin inventar contenido.'
     ].filter(Boolean).join('\n');
 
@@ -141,14 +155,16 @@ Deno.serve(async (request) => {
       },
       body: JSON.stringify({
         model: Deno.env.get('GEMINI_MODEL') || 'gemini-3.5-flash',
-        input: [
-          { type: 'text', text: prompt },
-          {
-            type: 'document',
-            data: base64FromBytes(fileBytes),
-            mime_type: mimeTypeFor(note)
-          }
-        ]
+        input: fileKind === 'pdf'
+          ? [
+            { type: 'text', text: prompt },
+            {
+              type: 'document',
+              data: base64FromBytes(fileBytes),
+              mime_type: mimeTypeFor(note)
+            }
+          ]
+          : [{ type: 'text', text: prompt }]
       })
     });
 

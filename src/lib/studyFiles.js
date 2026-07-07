@@ -8,7 +8,8 @@ export function formatFileSize(bytes = 0) {
 
 export function inferFileType(file) {
   const name = file?.name?.toLowerCase() || '';
-  if (name.endsWith('.doc') || name.endsWith('.docx')) return 'DOC';
+  if (name.endsWith('.docx')) return 'DOC';
+  if (name.endsWith('.doc')) return 'OLD_DOC';
   if (name.endsWith('.pdf')) return 'PDF';
   return 'FILE';
 }
@@ -16,8 +17,11 @@ export function inferFileType(file) {
 export function validateStudyFile(file) {
   const fileType = inferFileType(file);
   const maxBytes = 20 * 1024 * 1024;
+  if (fileType === 'OLD_DOC') {
+    throw new Error('El formato .doc antiguo no es compatible con IA. Guardalo como DOCX o PDF y volvelo a subir.');
+  }
   if (!['PDF', 'DOC'].includes(fileType)) {
-    throw new Error('Solo se pueden subir archivos PDF, DOC o DOCX.');
+    throw new Error('Solo se pueden subir archivos PDF o DOCX.');
   }
   if (file.size > maxBytes) {
     throw new Error('El archivo supera el maximo de 20 MB.');
